@@ -38,9 +38,7 @@ Speed and heading stay empty when the source does not report them. Nothing is gu
 
 ## Built and designed
 
-<p>
-  <img src="docs/screenshots/architecture.png" alt="Architecture: built direct ingest next to the designed Kafka core" width="100%">
-</p>
+The architecture diagram is at https://archi1.flcrom.dev.
 
 | | Status |
 |---|---|
@@ -51,7 +49,7 @@ Speed and heading stay empty when the source does not report them. Nothing is gu
 | Kafka bridge (reads `driver_locations`, posts to the API) | Built, tested against a mock; no broker is deployed |
 | Kafka as the single entry point, producer side, rules consumer, dead-letter topic | Designed only, not built |
 
-Solid arrows in the diagram are what runs today. Dashed arrows are the target design.
+In the diagram, solid arrows are what runs today and dashed arrows are the target design.
 
 ## Data sources and attribution
 
