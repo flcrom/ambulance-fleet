@@ -16,7 +16,7 @@ export function parseIsoUtc(s: unknown): number {
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-export function validatePing(value: unknown, nowMs: number = Date.now()): PingInput {
+export function validatePing(value: unknown, nowMs: number = Date.now()): PingInput & {telemetry_time:'device'|'receipt'} {
   if (!Number.isFinite(nowMs)) throw new Error('invalid clock');
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('ping must be an object');
   const v = value as Record<string, unknown>;
@@ -32,8 +32,8 @@ export function validatePing(value: unknown, nowMs: number = Date.now()): PingIn
   if (v.heading !== null && (!num(v.heading) || v.heading < 0 || v.heading >= 360)) throw new Error('heading must satisfy 0 <= heading < 360');
   if (v.telemetry_time !== undefined && v.telemetry_time !== 'device' && v.telemetry_time !== 'receipt') throw new Error('telemetry_time must be device or receipt');
   return {
-    ...(v.telemetry_time !== undefined ? { telemetry_time: v.telemetry_time } : {}),
-    event_id: v.event_id.toLowerCase(), vehicle_id: v.vehicle_id, recorded_at: v.recorded_at as string,
+    telemetry_time: v.telemetry_time ?? 'receipt',
+    event_id: v.event_id.toLowerCase(), vehicle_id: v.vehicle_id, recorded_at: v.telemetry_time === undefined ? new Date(nowMs).toISOString() : v.recorded_at as string,
     lat: v.lat, lon: v.lon, speed_kph: v.speed_kph, heading: v.heading,
   };
 }

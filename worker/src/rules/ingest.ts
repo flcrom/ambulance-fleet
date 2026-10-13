@@ -38,7 +38,7 @@ export function ingestPing(
 ): IngestResult {
   const id = typeof input.event_id === 'string' ? input.event_id.toLowerCase() : input.event_id;
   if (seen.has(input.event_id) || seen.has(id)) return { kind: 'duplicate', latest };
-  const ping: Ping = { ...input, event_id: id, received_at: receivedAtIso };
+  const ping: Ping = { ...input, event_id: id, telemetry_time:input.telemetry_time??'receipt', received_at: receivedAtIso };
   const advanced = isNewer(latest, ping);
   return { kind: 'accepted', ping, latest: advanced ? ping : latest, advanced };
 }

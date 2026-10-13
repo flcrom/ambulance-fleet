@@ -7,7 +7,7 @@ export interface PingInput {
   lat: number; lon: number; speed_kph: number | null; heading: number | null;
   telemetry_time?: 'device' | 'receipt';
 }
-export interface Ping extends PingInput { received_at: string; telemetry_time?: 'device' | 'receipt' }
+export interface Ping extends PingInput { received_at: string; telemetry_time: 'device' | 'receipt' }
 export interface Destination extends LatLon { label: string }
 export interface Eta { minutes: number; method: 'straight_line'; approximate: true }
 export interface Vehicle {

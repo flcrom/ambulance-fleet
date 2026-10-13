@@ -6,7 +6,7 @@ import type { Ping, Vehicle, Alert } from './index';
 const NOW = Date.parse('2026-10-13T00:00:00.000Z');
 const iso = (ms: number) => new Date(ms).toISOString();
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const input = (o: Record<string, unknown> = {}) => ({ event_id: uuid(1), vehicle_id: 'v1', recorded_at: iso(NOW), lat: 42.36, lon: -71.06, speed_kph: 30, heading: 90, ...o });
+const input = (o: Record<string, unknown> = {}) => ({ event_id: uuid(1), vehicle_id: 'v1', recorded_at: iso(NOW), lat: 42.36, lon: -71.06, speed_kph: 30, heading: 90, telemetry_time:'device' as const, ...o });
 const ping = (o: Partial<Ping> = {}): Ping => ({ ...(input() as any), received_at: iso(NOW), ...o });
 const veh = (o: Partial<Vehicle> = {}): Vehicle => ({ id: 'v1', callsign: 'A1', type: 'ALS', status: 'en_route', destination: { label: 'H', lat: 42.37, lon: -71.06 }, latest_ping: ping(), stale: false, eta: null, ...o });
 

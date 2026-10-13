@@ -18,9 +18,10 @@ export class FleetStore extends DurableObject<Env> {
   this.sql.exec(`CREATE TABLE IF NOT EXISTS vehicles(id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS pings(event_id TEXT PRIMARY KEY, vehicle_id TEXT NOT NULL, recorded_at TEXT NOT NULL, data TEXT NOT NULL); CREATE INDEX IF NOT EXISTS ping_history ON pings(vehicle_id,recorded_at DESC); CREATE TABLE IF NOT EXISTS alerts(id TEXT PRIMARY KEY, vehicle_id TEXT NOT NULL, kind TEXT NOT NULL, active INTEGER NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);`);
  }
  private rows<T>(query:string,...args:(string|number)[]):T[] { return this.sql.exec(query,...args).toArray().map(row=>JSON.parse(row.data as string) as T); }
- private vehicles(){return this.rows<Vehicle>('SELECT data FROM vehicles ORDER BY id');}
+ private normalizeVehicle(v:Vehicle):Vehicle{if(v.latest_ping&&!v.latest_ping.telemetry_time){v.latest_ping={...v.latest_ping,telemetry_time:'receipt',recorded_at:v.latest_ping.received_at};}return v;}
+ private vehicles(){return this.rows<Vehicle>('SELECT data FROM vehicles ORDER BY id').map(v=>this.normalizeVehicle(v));}
  private saveVehicle(vehicle:Vehicle){this.sql.exec('INSERT OR REPLACE INTO vehicles(id,data) VALUES (?,?)',vehicle.id,JSON.stringify(vehicle));}
- private getVehicle(id:string){return this.rows<Vehicle>('SELECT data FROM vehicles WHERE id=?',id)[0];}
+ private getVehicle(id:string){const v=this.rows<Vehicle>('SELECT data FROM vehicles WHERE id=?',id)[0];return v?this.normalizeVehicle(v):undefined;}
  private async refreshFeed(){
   const now=Date.now();if(now-this.feedLastAttempt<15000)return;this.feedLastAttempt=now;
   try{
@@ -108,7 +109,7 @@ export class FleetStore extends DurableObject<Env> {
    const match=url.pathname.match(/^\/api\/vehicles\/([a-zA-Z0-9_-]{1,80})(\/history)?$/);
    if(match){
     this.role(claims,['dispatcher']);const v=this.getVehicle(match[1]);if(!v)throw new ApiError(404,'VEHICLE','Vehicle not found');
-    if(request.method==='GET' && match[2]){const raw=url.searchParams.get('limit')||'100';const limit=Number(raw);if(!/^\d+$/.test(raw)||!Number.isInteger(limit)||limit<1||limit>500)throw new ApiError(400,'LIMIT','Limit must be 1..500');return json({pings:this.rows<Ping>('SELECT data FROM pings WHERE vehicle_id=? ORDER BY recorded_at DESC,rowid DESC LIMIT ?',v.id,limit)});}
+    if(request.method==='GET' && match[2]){const raw=url.searchParams.get('limit')||'100';const limit=Number(raw);if(!/^\d+$/.test(raw)||!Number.isInteger(limit)||limit<1||limit>500)throw new ApiError(400,'LIMIT','Limit must be 1..500');return json({pings:this.rows<Ping>('SELECT data FROM pings WHERE vehicle_id=? ORDER BY recorded_at DESC,rowid DESC LIMIT ?',v.id,limit).map(p=>p.telemetry_time?p:{...p,telemetry_time:'receipt',recorded_at:p.received_at})});}
     if(request.method==='PATCH'&&!match[2]){
      const previous=structuredClone(v);const b=validateVehiclePatch(await this.body(request));if(!Object.keys(b).length||Object.keys(b).some(k=>!['status','destination'].includes(k)))throw new ApiError(400,'PATCH','Invalid fields');
      if(b.status!==undefined){if(!statuses.includes(b.status as OperationalStatus))throw new ApiError(400,'STATUS','Invalid operational status');v.status=b.status as OperationalStatus;}
@@ -121,9 +122,9 @@ export class FleetStore extends DurableObject<Env> {
     if(claims.role==='crew'&&claims.vehicle_id!==p.vehicle_id)throw new ApiError(403,'VEHICLE_SCOPE','Vehicle not permitted');
     const v=this.getVehicle(p.vehicle_id);if(!v)throw new ApiError(404,'VEHICLE','Vehicle not found');
     const existing=this.rows<Ping>('SELECT data FROM pings WHERE event_id=?',p.event_id)[0];
-    if(existing){const compare=(p:PingInput)=>JSON.stringify([p.event_id,p.vehicle_id,p.telemetry_time==='receipt'?null:p.recorded_at,p.lat,p.lon,p.speed_kph,p.heading,p.telemetry_time||'device']);const {received_at,...original}=existing;if(compare(original)!==compare(p))throw new ApiError(409,'EVENT_CONFLICT','Event ID belongs to a different ping');if(v.source==='stand_in'){v.last_seen=new Date().toISOString();this.saveVehicle(v);this.broadcast(fleetId);}return json({accepted:true,duplicate:true,event_id:p.event_id});}
+    if(existing){const compare=(p:PingInput)=>JSON.stringify([p.event_id,p.vehicle_id,p.telemetry_time==='receipt'?null:p.recorded_at,p.lat,p.lon,p.speed_kph,p.heading,p.telemetry_time||'receipt']);const {received_at,...original}=existing;if(compare(original)!==compare(p))throw new ApiError(409,'EVENT_CONFLICT','Event ID belongs to a different ping');if(v.source==='stand_in'){v.last_seen=new Date().toISOString();this.saveVehicle(v);this.broadcast(fleetId);}return json({accepted:true,duplicate:true,event_id:p.event_id});}
     const previous=structuredClone(v);
-    const stored:Ping={...p,received_at:new Date().toISOString()};if(v.source==='stand_in')v.last_seen=stored.received_at;
+    const stored:Ping={...p,telemetry_time:p.telemetry_time??'receipt',received_at:new Date().toISOString()};if(v.source==='stand_in')v.last_seen=stored.received_at;
     this.ctx.storage.transactionSync(()=>{if(v.source==='stand_in')this.saveVehicle(v);this.sql.exec('INSERT INTO pings VALUES(?,?,?,?)',stored.event_id,stored.vehicle_id,stored.recorded_at,JSON.stringify(stored));if(isNewer(v.latest_ping,stored)){v.latest_ping=stored;this.saveVehicle(v);for(const a of (v.source==='stand_in'?[]:evaluateAlerts(v,previous,this.rows<Alert>('SELECT data FROM alerts'),Date.now(),()=>crypto.randomUUID()))){this.sql.exec('INSERT INTO alerts VALUES(?,?,?,?,?)',a.id,v.id,a.kind,1,JSON.stringify(a));}}});
     this.broadcast(fleetId);await this.ctx.storage.setAlarm(Date.now()+5000);return json({accepted:true,duplicate:false,event_id:p.event_id},201);
    }

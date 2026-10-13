@@ -63,7 +63,7 @@ wrangler config uses compatibility date 2026-10-01, SQLite migration v1. No depl
 
 ## Final merged amendments
 Paths: worker/src/index.ts and store.ts; auth/rules/feeds each worker/src/<lane>/index.ts; UI web/.
-Vehicle.source:'device'|'synthetic'|'stand_in' required. Synthetic demo is not a device observation. Stand-in data is buses/trains, never ambulances. Ping.telemetry_time:'device'|'receipt' optional defaults device. Legacy Kafka uses receipt and null motion. Fixed receipt replay must not change immutable stored event.
+Vehicle.source:'device'|'synthetic'|'stand_in' required. Synthetic demo is not a device observation. Stand-in data is buses/trains, never ambulances. Ping.telemetry_time:'device'|'receipt' optional input defaults receipt, using server receipt clock; stored/output provenance always explicit. Legacy Kafka uses receipt and null motion. Fixed receipt replay must not change immutable stored event.
 Public modes: /api/demo/fleet?mode=stand_in and /api/demo/events?mode=stand_in isolate demo-standin; default mode synthetic isolated demo. Snapshot attribution?:{label:string;source:string;url:string}, feed_error?:string. No public writes/history/ack.
 Live browser WS clients offer fleet.v1 plus fleet-token.<JWT>; server selects fleet.v1 only. Dispatcher-only, Origin required. Active accept sockets, expiry frame {type:'auth_expired'} before close(1008), TTL checks before each send.
 Implementation is direct ingestion -> Durable Object. Kafka-core diagram is target architecture, not a claimed broker implementation.
