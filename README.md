@@ -33,6 +33,8 @@ npm run test:e2e
 Public default demo is synthetic. Select live stand-ins for MBTA buses. /api/demo/fleet?mode=stand_in and matching /api/demo/events are isolated from live fleets. Live API defaults disabled. Local-only `.dev.vars` must contain LIVE_ENABLED=true and an operator-generated JWT_SECRET of at least32 random bytes for real-device testing. Never commit .dev.vars, tokens or secrets. Mint short-lived tokens through operator-only auth.issueToken (not a public signup endpoint). Crew binds one vehicle; dispatcher administers the fleet; bridge can register stand-in sources only. Test scripts mint transient tokens when JWT_SECRET environment matches local runtime.
 
 ## Deploy
+Live at https://siren.flcrom.dev (custom domain in wrangler.jsonc; the older fleet.flcrom.dev redirects to it).
+
 Use the verified owner account and private source repo. Review account limits/billing before deployment. Authenticate Wrangler through the operator's authorized account route, then:
 
 ```sh

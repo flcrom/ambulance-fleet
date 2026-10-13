@@ -6,6 +6,7 @@ export function json(data: unknown, status = 200) { return new Response(JSON.str
 export default {
  async fetch(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+  if (url.hostname === 'fleet.flcrom.dev') { url.hostname = 'siren.flcrom.dev'; return Response.redirect(url.toString(), 301); }
   if (!url.pathname.startsWith('/api/')) {
    const response = await env.ASSETS.fetch(request); const headers = new Headers(response.headers);
    headers.set('X-Robots-Tag','noindex, nofollow'); headers.set('X-Content-Type-Options','nosniff'); headers.set('Referrer-Policy','no-referrer');
