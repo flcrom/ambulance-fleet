@@ -9,7 +9,7 @@ export default {
   if (!url.pathname.startsWith('/api/')) {
    const response = await env.ASSETS.fetch(request); const headers = new Headers(response.headers);
    headers.set('X-Robots-Tag','noindex, nofollow'); headers.set('X-Content-Type-Options','nosniff'); headers.set('Referrer-Policy','no-referrer');
-   headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self' wss:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'");
+   headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' wss:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'");
    return new Response(response.body,{status:response.status,headers});
   }
   try {
