@@ -1,0 +1,132 @@
+TAP version 13
+# Subtest: baseline ok
+ok 1 - baseline ok
+  ---
+  duration_ms: 7.375813
+  type: 'test'
+  ...
+# Subtest: alg none/confusion/header quirks
+ok 2 - alg none/confusion/header quirks
+  ---
+  duration_ms: 1.926369
+  type: 'test'
+  ...
+# Subtest: tamper
+ok 3 - tamper
+  ---
+  duration_ms: 3.572729
+  type: 'test'
+  ...
+# Subtest: size
+ok 4 - size
+  ---
+  duration_ms: 0.315276
+  type: 'test'
+  ...
+# Subtest: payload claims
+ok 5 - payload claims
+  ---
+  duration_ms: 11.287481
+  type: 'test'
+  ...
+# Subtest: proto pollution / extra claims
+ok 6 - proto pollution / extra claims
+  ---
+  duration_ms: 2.327552
+  type: 'test'
+  ...
+# 2000 new-key calls at full table ms 21
+# BOM json rejected
+# text accepted odd unicode: []
+# Subtest: invalid utf8 / BOM in payload
+ok 7 - invalid utf8 / BOM in payload
+  ---
+  duration_ms: 1.417255
+  type: 'test'
+  ...
+# Subtest: secret config
+ok 8 - secret config
+  ---
+  duration_ms: 15.648765
+  type: 'test'
+  ...
+# Subtest: extractToken
+ok 9 - extractToken
+  ---
+  duration_ms: 3.809059
+  type: 'test'
+  ...
+# Subtest: authz helpers
+ok 10 - authz helpers
+  ---
+  duration_ms: 0.517418
+  type: 'test'
+  ...
+# Subtest: origin
+ok 11 - origin
+  ---
+  duration_ms: 0.614212
+  type: 'test'
+  ...
+# Subtest: rate limiter
+ok 12 - rate limiter
+  ---
+  duration_ms: 1056.656865
+  type: 'test'
+  ...
+# Subtest: readJson
+ok 13 - readJson
+  ---
+  duration_ms: 10.247442
+  type: 'test'
+  ...
+# Subtest: validators
+ok 14 - validators
+  ---
+  duration_ms: 1.864879
+  type: 'test'
+  ...
+# Subtest: error redaction
+ok 15 - error redaction
+  ---
+  duration_ms: 12.557966
+  type: 'test'
+  ...
+# Subtest: clock skew
+ok 16 - clock skew
+  ---
+  duration_ms: 3.652886
+  type: 'test'
+  ...
+# ns/op first-byte-wrong vs last-byte-wrong 125441 80309
+# Subtest: timing sanity (coarse)
+not ok 17 - timing sanity (coarse)
+  ---
+  duration_ms: 628.541832
+  type: 'test'
+  location: '/home/sandbox/fleet-security/security/qa-attack.test.mjs:200:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(Math.abs(x-y)/Math.max(x,y)<0.3)
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///home/sandbox/fleet-security/security/qa-attack.test.mjs:203:116)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 16
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1820.216096

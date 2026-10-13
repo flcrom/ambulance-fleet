@@ -1,0 +1,25 @@
+{
+  "name": "laneqa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261012.1",
+    "esbuild": "^0.28.2",
+    "miniflare": "^4.20260730.0",
+    "typescript": "^7.0.2",
+    "ws": "^8.22.0"
+  },
+  "overrides": {
+    "workerd": "1.20261006.1"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "fleet-lane-c",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "simulate": "tsx cli.ts",
+    "feed": "tsx feed-cli.ts",
+    "kafka": "tsx ../kafka-bridge/cli.ts",
+    "test:live": "tsx live-test.ts",
+    "test:worker": "tsx worker-live-test.ts"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.28.2",
+    "miniflare": "^4.20260730.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.4"
+  },
+  "overrides": {
+    "undici": "^7.29.1",
+    "sharp": "^0.35.5"
+  }
+}

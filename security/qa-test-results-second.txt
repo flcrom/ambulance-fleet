@@ -1,0 +1,116 @@
+TAP version 13
+# Subtest: baseline ok
+ok 1 - baseline ok
+  ---
+  duration_ms: 9.335751
+  type: 'test'
+  ...
+# Subtest: alg none/confusion/header quirks
+ok 2 - alg none/confusion/header quirks
+  ---
+  duration_ms: 2.021178
+  type: 'test'
+  ...
+# Subtest: tamper
+ok 3 - tamper
+  ---
+  duration_ms: 3.706589
+  type: 'test'
+  ...
+# Subtest: size
+ok 4 - size
+  ---
+  duration_ms: 0.320063
+  type: 'test'
+  ...
+# Subtest: payload claims
+ok 5 - payload claims
+  ---
+  duration_ms: 10.237349
+  type: 'test'
+  ...
+# Subtest: proto pollution / extra claims
+ok 6 - proto pollution / extra claims
+  ---
+  duration_ms: 1.749411
+  type: 'test'
+  ...
+# 2000 new-key calls at full table ms 24
+# BOM json rejected
+# text accepted odd unicode: []
+# Subtest: invalid utf8 / BOM in payload
+ok 7 - invalid utf8 / BOM in payload
+  ---
+  duration_ms: 0.80542
+  type: 'test'
+  ...
+# Subtest: secret config
+ok 8 - secret config
+  ---
+  duration_ms: 15.513002
+  type: 'test'
+  ...
+# Subtest: extractToken
+ok 9 - extractToken
+  ---
+  duration_ms: 3.894483
+  type: 'test'
+  ...
+# Subtest: authz helpers
+ok 10 - authz helpers
+  ---
+  duration_ms: 0.484644
+  type: 'test'
+  ...
+# Subtest: origin
+ok 11 - origin
+  ---
+  duration_ms: 0.645735
+  type: 'test'
+  ...
+# Subtest: rate limiter
+ok 12 - rate limiter
+  ---
+  duration_ms: 1086.894521
+  type: 'test'
+  ...
+# Subtest: readJson
+ok 13 - readJson
+  ---
+  duration_ms: 10.402049
+  type: 'test'
+  ...
+# Subtest: validators
+ok 14 - validators
+  ---
+  duration_ms: 1.299887
+  type: 'test'
+  ...
+# Subtest: error redaction
+ok 15 - error redaction
+  ---
+  duration_ms: 6.308195
+  type: 'test'
+  ...
+# Subtest: clock skew
+ok 16 - clock skew
+  ---
+  duration_ms: 1.928579
+  type: 'test'
+  ...
+# ns/op first-byte-wrong vs last-byte-wrong 123517 90093
+# Subtest: timing sanity (coarse)
+ok 17 - timing sanity (coarse)
+  ---
+  duration_ms: 641.255009
+  type: 'test'
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1853.363931

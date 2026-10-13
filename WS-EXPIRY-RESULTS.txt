@@ -1,0 +1,5 @@
+{"case":0,"close":1008,"auth_expired":true,"elapsed_ms":1645}
+{"case":1,"close":1008,"auth_expired":true,"elapsed_ms":1994}
+{"case":2,"close":1008,"auth_expired":true,"elapsed_ms":2001}
+{"case":3,"close":1008,"auth_expired":true,"elapsed_ms":2000}
+{"case":4,"close":1008,"auth_expired":true,"elapsed_ms":1997}

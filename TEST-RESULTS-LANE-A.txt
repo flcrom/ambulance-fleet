@@ -1,0 +1,162 @@
+TAP version 13
+# Subtest: issue/verify each role and project exact claims only
+ok 1 - issue/verify each role and project exact claims only
+  ---
+  duration_ms: 14.65822
+  type: 'test'
+  ...
+# Subtest: verify independently minted HMAC JWT
+ok 2 - verify independently minted HMAC JWT
+  ---
+  duration_ms: 0.816903
+  type: 'test'
+  ...
+# Subtest: signature, secret, encoding and malformed token negative cases
+ok 3 - signature, secret, encoding and malformed token negative cases
+  ---
+  duration_ms: 2.096512
+  type: 'test'
+  ...
+# Subtest: alg confusion and header extension rejected
+ok 4 - alg confusion and header extension rejected
+  ---
+  duration_ms: 1.374296
+  type: 'test'
+  ...
+# Subtest: registered claim negative cases including exp boundary, future iat and excessive TTL
+ok 5 - registered claim negative cases including exp boundary, future iat and excessive TTL
+  ---
+  duration_ms: 6.228763
+  type: 'test'
+  ...
+# Subtest: claim binding negative cases
+ok 6 - claim binding negative cases
+  ---
+  duration_ms: 4.451169
+  type: 'test'
+  ...
+# Subtest: token issue validates lifetime/secret/binding
+ok 7 - token issue validates lifetime/secret/binding
+  ---
+  duration_ms: 0.766739
+  type: 'test'
+  ...
+# Subtest: HTTP bearer and WebSocket protocol extraction
+ok 8 - HTTP bearer and WebSocket protocol extraction
+  ---
+  duration_ms: 20.23018
+  type: 'test'
+  ...
+# Subtest: authorize env gates and live auth
+ok 9 - authorize env gates and live auth
+  ---
+  duration_ms: 4.303135
+  type: 'test'
+  ...
+# Subtest: role, vehicle and tenant authorization
+ok 10 - role, vehicle and tenant authorization
+  ---
+  duration_ms: 0.670004
+  type: 'test'
+  ...
+# Subtest: same-origin browser requests and WebSocket origin mandatory
+ok 11 - same-origin browser requests and WebSocket origin mandatory
+  ---
+  duration_ms: 0.555394
+  type: 'test'
+  ...
+# Subtest: bounded strict JSON parsing
+ok 12 - bounded strict JSON parsing
+  ---
+  duration_ms: 6.125952
+  type: 'test'
+  ...
+# Subtest: input helper negative cases
+ok 13 - input helper negative cases
+  ---
+  duration_ms: 1.130977
+  type: 'test'
+  ...
+# Subtest: rate limiting burst, refill, isolation and clock rollback
+ok 14 - rate limiting burst, refill, isolation and clock rollback
+  ---
+  duration_ms: 0.688292
+  type: 'test'
+  ...
+# Subtest: rate limiter key bound fails closed, reclaims idle and validates configuration
+ok 15 - rate limiter key bound fails closed, reclaims idle and validates configuration
+  ---
+  duration_ms: 0.285742
+  type: 'test'
+  ...
+# Subtest: error response no-store and internal details redacted
+ok 16 - error response no-store and internal details redacted
+  ---
+  duration_ms: 1.500106
+  type: 'test'
+  ...
+# Subtest: strict vehicle create and patch validation rejects extra patient fields and derived offline
+ok 17 - strict vehicle create and patch validation rejects extra patient fields and derived offline
+  ---
+  duration_ms: 0.409217
+  type: 'test'
+  ...
+# Subtest: Unicode spoofing controls and separators rejected; real multilingual names permitted
+ok 18 - Unicode spoofing controls and separators rejected; real multilingual names permitted
+  ---
+  duration_ms: 0.388457
+  type: 'test'
+  ...
+# Subtest: UTF-8 BOM rejected, not silently stripped
+ok 19 - UTF-8 BOM rejected, not silently stripped
+  ---
+  duration_ms: 0.522619
+  type: 'test'
+  ...
+# Subtest: crew TTL capped on issuance and independent verification
+ok 20 - crew TTL capped on issuance and independent verification
+  ---
+  duration_ms: 9.218137
+  type: 'test'
+  ...
+# Subtest: 401 challenge and exact 429 retry delay headers
+ok 21 - 401 challenge and exact 429 retry delay headers
+  ---
+  duration_ms: 0.813869
+  type: 'test'
+  ...
+# Subtest: WS close-at-exp schedules exact remaining interval, supports cleanup and already-expired closure
+ok 22 - WS close-at-exp schedules exact remaining interval, supports cleanup and already-expired closure
+  ---
+  duration_ms: 0.469143
+  type: 'test'
+  ...
+# Subtest: BOM in signed JWT payload rejected and explicit issuer backdating works
+ok 23 - BOM in signed JWT payload rejected and explicit issuer backdating works
+  ---
+  duration_ms: 2.087039
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 152.146643
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.4 [39m[90m/home/sandbox/ambulance-fleet[39m
+
+ [32m✓[39m worker/src/rules/rules.test.ts [2m([22m[2m77 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m77 passed[39m[22m[90m (77)[39m
+[2m   Start at [22m 05:43:51
+[2m   Duration [22m 276ms[2m (tests 56%, import 27%, transform 14%, worker 3%)[22m
+
+
+Integrated worker typecheck passes. 15 signed JWT API smoke checks pass. api-security runtime JWT/WS regression suite passes with actual D v2 and E v2. Stand-in mode returns honest failure (0 markers) locally, source fetch not verified.
+
+Web typecheck/build pass, web 14 tests pass on Vitest 5.0.4. Worker typecheck ES2023 passes. Null/heartbeat rules total 87. Signed JWT store-heartbeat test passes; API smoke 16 pass.

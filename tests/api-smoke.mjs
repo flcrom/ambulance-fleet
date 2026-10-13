@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import WebSocket from 'ws';
+import {issueToken} from '../.security-build/index.js';
+const root=process.env.FLEET_API_URL||'http://localhost:8787';
+const fleet=process.env.TEST_FLEET_ID||'qa_'+randomUUID().slice(0,8);
+// Test-only auth adapter passes base64 claims. For real auth use supplied signed role tokens.
+const secret=process.env.JWT_SECRET; if(!secret)throw Error('Test JWT_SECRET required');
+const claims=(role,extra={},fid=fleet)=>issueToken({sub:'qa-'+role,fleet_id:fid,role,...extra},secret);
+const dispatcher=process.env.DISPATCHER_TOKEN||await claims('dispatcher');
+const bridge=process.env.BRIDGE_TOKEN||await claims('bridge');
+const crew=process.env.CREW_TOKEN||await claims('crew',{vehicle_id:'AMB1'});
+async function call(path,method='GET',body,token=dispatcher,expected=200){const r=await fetch(root+path,{method,headers:{...(token?{Authorization:'Bearer '+token}:{}),...(body!==undefined?{'Content-Type':'application/json'}:{})},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();assert.equal(r.status,expected,JSON.stringify({path,data}));assert.equal(r.headers.get('cache-control'),'no-store');return data;}
+let passed=0;const test=async(name,fn)=>{await fn();passed++;console.log('PASS '+name);};
+let ping;
+await test('health and demo synthetic isolation',async()=>{const d=await call('/api/demo/fleet','GET',undefined,null);assert.equal(d.mode,'demo');assert.equal(d.vehicles.length,3);assert.ok(d.vehicles.every(v=>v.source==='synthetic'));});
+await test('missing auth rejected',()=>call('/api/fleet','GET',undefined,null,401));
+await test('create vehicle + conflict',async()=>{const created=await call('/api/vehicles','POST',{id:'AMB1',callsign:'QA 1',type:'ALS'},dispatcher,201);assert.equal(created.status,'offline');assert.equal(created.stale,true);assert.equal(created.status,(await call('/api/fleet')).vehicles[0].status);await call('/api/vehicles','POST',{id:'AMB1',callsign:'QA 1',type:'ALS'},dispatcher,409);});
+await test('roles prevent writes',async()=>{await call('/api/vehicles','POST',{id:'AMB2',callsign:'QA 2',type:'BLS'},crew,403);await call('/api/pings','POST',{},dispatcher,403);await call('/api/fleet','GET',undefined,crew,403);});
+await test('first ping stored',async()=>{ping={event_id:randomUUID(),vehicle_id:'AMB1',recorded_at:new Date().toISOString(),lat:12.97,lon:77.59,speed_kph:35,heading:45,telemetry_time:'device'};const r=await call('/api/pings','POST',ping,crew,201);assert.equal(r.duplicate,false);const s=await call('/api/fleet');assert.equal(s.vehicles[0].latest_ping.event_id,ping.event_id);assert.equal(s.vehicles[0].stale,false);assert.ok(!s.alerts.some(a=>a.vehicle_id==='AMB1'&&a.kind==='stale'));});
+await test('replay idempotent and conflict detected',async()=>{const r=await call('/api/pings','POST',ping,crew);assert.equal(r.duplicate,true);await call('/api/pings','POST',{...ping,lat:13},crew,409);});
+await test('reordered ping never rewinds latest',async()=>{await call('/api/pings','POST',{...ping,event_id:randomUUID(),recorded_at:new Date(Date.now()-20000).toISOString(),lat:12.9},bridge,201);const s=await call('/api/fleet');assert.equal(s.vehicles[0].latest_ping.event_id,ping.event_id);const h=await call('/api/vehicles/AMB1/history');assert.equal(h.pings.length,2);assert.equal(h.pings[0].event_id,ping.event_id);});
+await test('invalid coordinates/future/limits/status rejected',async()=>{for(const patch of [{lat:91},{lon:181},{speed_kph:-1},{heading:360},{recorded_at:new Date(Date.now()+120000).toISOString()}])await call('/api/pings','POST',{...ping,event_id:randomUUID(),...patch},bridge,400);await call('/api/vehicles/AMB1/history?limit=501','GET',undefined,dispatcher,400);await call('/api/vehicles/AMB1','PATCH',{status:'offline'},dispatcher,400);});
+await test('crew vehicle scope enforced',()=>call('/api/pings','POST',{...ping,event_id:randomUUID(),vehicle_id:'AMB2'},crew,403));
+await test('destination arrival alert without status change + ack',async()=>{await call('/api/vehicles/AMB1','PATCH',{destination:{label:'QA hospital',lat:ping.lat,lon:ping.lon},status:'transporting'});const s=await call('/api/fleet');assert.equal(s.vehicles[0].status,'transporting');assert.ok(s.alerts.some(a=>a.kind==='arrival'));const a=s.alerts.find(a=>a.kind==='arrival');await call('/api/alerts/'+a.id+'/ack','POST');const after=await call('/api/fleet');assert.ok(!after.alerts.find(x=>x.id===a.id));});
+await test('nullable provider motion stored without estimated ETA',async()=>{const p={...ping,event_id:randomUUID(),recorded_at:new Date(Date.now()+1).toISOString(),speed_kph:null,heading:null};await call('/api/pings','POST',p,bridge,201);const s=await call('/api/fleet');assert.equal(s.vehicles[0].latest_ping.speed_kph,null);assert.equal(s.vehicles[0].latest_ping.heading,null);assert.equal(s.vehicles[0].eta,null);});
+await test('cross-fleet isolation',async()=>{const other=await claims('dispatcher',{},fleet+'_other');assert.equal((await call('/api/fleet','GET',undefined,other)).vehicles.length,0);await call('/api/vehicles/AMB1/history','GET',undefined,other,404);});
+await test('spoofed internal headers stripped + origin rejected',async()=>{let r=await fetch(root+'/api/fleet',{headers:{Authorization:'Bearer '+dispatcher,'x-fleet-id':'demo','x-fleet-context':JSON.stringify({fleet_id:'demo',role:'dispatcher'})}});assert.equal((await r.json()).fleet_id,fleet);r=await fetch(root+'/api/demo/fleet',{headers:{Origin:'https://evil.invalid'}});assert.equal(r.status,403);});
+await test('demo mutation routes absent',()=>call('/api/demo/reset','POST',{},null,404));
+await test('body cap enforced',()=>call('/api/pings','POST',{...ping,padding:'a'.repeat(5000)},bridge,413));
+await test('WebSocket snapshot',()=>new Promise((resolve,reject)=>{const socket=new WebSocket(root.replace('http','ws')+'/api/demo/events', {headers:{Origin:root}});const timer=setTimeout(()=>reject(Error('websocket timeout')),10000);socket.onmessage=e=>{try{const data=JSON.parse(e.data);assert.equal(data.type,'snapshot');assert.equal(data.data.mode,'demo');clearTimeout(timer);socket.close();resolve();}catch(err){reject(err);}};socket.onerror=reject;}));
+console.log(`${passed} API checks passed`);

@@ -1,0 +1,64 @@
+PASS live disabled by default
+PASS public demo works while live disabled
+PASS live no auth and invalid auth
+PASS query token forbidden
+PASS create A1
+PASS create A2
+PASS duplicate vehicle conflict
+PASS crew and bridge cannot register
+PASS role matrix REST
+PASS crew other vehicle scope
+PASS cross fleet empty and unknown resource
+PASS forged internal fleet and claims ignored
+PASS malformed body empty
+PASS malformed body truncated
+PASS malformed body array
+PASS malformed body null
+PASS malformed body string
+PASS malformed body invalid UTF8
+PASS 4KB plus raw body cap
+PASS 4KB exact reaches JSON validation
+PASS chunked body cap
+PASS invalid ping latitude
+PASS invalid ping longitude
+PASS invalid ping string
+PASS invalid ping speed
+PASS invalid ping negative
+PASS invalid ping heading
+PASS invalid ping uuid
+PASS invalid ping future
+PASS invalid ping old
+PASS invalid ping date
+PASS valid ping and received time
+PASS duplicate replay, immutable history
+PASS conflicting event content and vehicle
+PASS same event id scoped to another fleet
+PASS out of order concurrent batch never rewinds
+PASS equal timestamp does not rewind
+PASS concurrent duplicate inserts exactly once
+PASS history bounds and role
+PASS patch schema and offline rejected
+PASS destination arrival advisory ack idempotent
+PASS cross fleet ack and crew ack denied
+PASS public demo routes immutable
+PASS cross origin rejected; no ACAO
+PASS all tested API responses no-store and no error leakage
+PASS UUID case-normalized replay
+PASS receipt-time replay changes timestamp without mutating stored event
+PASS strict unknown fields and media rejected
+PASS future-skew does not pin later genuine location
+PASS null motion accepted and ETA stays unknown
+PASS device duplicate never revives stale vehicle
+PASS stand-in duplicate heartbeat refreshes last_seen but history immutable
+PASS end-to-end fixture GTFS through Worker to public stand-in API and heartbeat
+PASS new vehicle create representation equals immediate snapshot
+PASS WS missing/expired/crew/cross-origin rejected
+PASS bridge cannot open dispatcher-only live WS
+PASS browser JWT subprotocol handshake succeeds without token echo
+PASS WS requires Origin
+PASS live WS snapshot consistency and broadcast
+PASS WS expiry closes 1008 by next 5s alarm
+PASS direct runtime WS expiry close event
+PASS WS client writes rejected 1008
+PASS public demo WS isolation
+63/63 PASS

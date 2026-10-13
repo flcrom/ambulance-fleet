@@ -1,0 +1,9 @@
+import {issueToken} from '../.security-build/index.js';import {randomUUID} from 'node:crypto';import assert from 'node:assert/strict';
+const base='http://localhost:8787',token=await issueToken({sub:'heartbeat-qa',fleet_id:'heartbeat_'+randomUUID().slice(0,8),role:'dispatcher'},process.env.JWT_SECRET);
+const bridge=await issueToken({sub:'heartbeat-bridge',fleet_id:JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString()).fleet_id,role:'bridge'},process.env.JWT_SECRET);
+const call=async(path,body,t=token)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});assert.ok(r.ok,await r.clone().text());return r.json();};
+await call('/api/vehicles',{id:'bus-static',callsign:'MBTA bus static',type:'BLS',source:'stand_in'});
+const ping={event_id:randomUUID(),vehicle_id:'bus-static',recorded_at:new Date(Date.now()-60000).toISOString(),lat:42.35,lon:-71.05,speed_kph:null,heading:null,telemetry_time:'device'};
+await call('/api/pings',ping,bridge);const first=(await call('/api/fleet')).vehicles[0];assert.equal(first.stale,false);const history=(await call('/api/vehicles/bus-static/history')).pings;
+await new Promise(r=>setTimeout(r,20));const duplicate=await call('/api/pings',ping,bridge);assert.equal(duplicate.duplicate,true);const after=(await call('/api/fleet')).vehicles[0];assert.ok(Date.parse(after.last_seen)>Date.parse(first.last_seen));assert.equal(after.latest_ping.recorded_at,ping.recorded_at);assert.deepEqual((await call('/api/vehicles/bus-static/history')).pings,history);assert.equal(after.eta,null);assert.ok(!(await call('/api/fleet')).alerts.some(a=>a.vehicle_id==='bus-static'));
+console.log('PASS duplicate stand-in advances last_seen but not immutable event/history; null motion preserved');

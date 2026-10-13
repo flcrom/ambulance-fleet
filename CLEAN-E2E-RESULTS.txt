@@ -1,0 +1,34 @@
+
+> fleet-dispatcher-web@1.0.0 test:e2e
+> playwright test
+
+
+Running 10 tests using 1 worker
+
+[WebServer] 6:07:57 AM [vite] ws proxy socket error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+[WebServer] 6:08:02 AM [vite] ws proxy socket error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   1 e2e/ui.spec.ts:2:1 › desktop demo, responsive layout, live history and ack (6.4s)
+  ✓   2 e2e/ui.spec.ts:7:1 › polling fallback when websocket is rejected (425ms)
+  ✓   3 e2e/ui.spec.ts:9:1 › stand-in feed failure stays empty, phone 320px has no overflow (594ms)
+[WebServer] 6:08:04 AM [vite] ws proxy error:
+[WebServer] Error: socket hang up
+[WebServer]     at Socket.socketOnEnd (node:_http_client:599:25)
+[WebServer]     at Socket.emit (node:events:531:35)
+[WebServer]     at endReadableNT (node:internal/streams/readable:1698:12)
+[WebServer]     at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+  ✓   4 e2e/ui.spec.ts:12:1 › expired dispatcher token stops live transport and can sign out (642ms)
+  ✓   5 e2e/ui.spec.ts:14:1 › long strings wrap at desktop, 390 and 320; sentence case and style (835ms)
+  ✓   6 e2e/ui.spec.ts:18:1 › modal traps focus and Escape closes from any control (472ms)
+  ✓   7 e2e/ui.spec.ts:19:1 › authorization expiry removes existing rows immediately (5.9s)
+[WebServer] 6:08:11 AM [vite] ws proxy socket error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   8 e2e/ui.spec.ts:20:1 › two-minute-ahead client clock keeps fresh vehicles online (375ms)
+  ✓   9 e2e/ui.spec.ts:22:1 › text contrast and labels stay readable; WS expiry clears rows (2.6s)
+  ✓  10 e2e/ui.spec.ts:23:1 › normal synthetic layout at 320px (1.4s)
+
+  10 passed (25.9s)

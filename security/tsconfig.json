@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"ES2022","moduleResolution":"Bundler","lib":["ES2022","DOM","DOM.Iterable"],"strict":true,"skipLibCheck":true,"outDir":"../.security-build","rootDir":"../worker/src/auth","declaration":true},"include":["../worker/src/auth/*.ts"],"exclude":["../worker/src/auth/*.test.ts"]}
