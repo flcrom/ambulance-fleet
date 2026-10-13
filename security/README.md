@@ -1,6 +1,6 @@
 # Lane D: auth and security
 
-Clean implementation inspired by the project concept attributed in the fleet contract to Vedant62/geolocation-telemetry-backend, commit 0904030987584d1aa4193c9ba5f0ea6ea379e235. No upstream code was accessed or copied in this lane.
+Original implementation.
 
 ## Run
 

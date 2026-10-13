@@ -8,7 +8,7 @@
 - npm run test:live: passed at 2026-10-13T00:07:56.622Z. MBTA route type 3 lookup yielded 150 bus routes; current protobuf yielded 5 valid bus samples; local mock API accepted 10 ping posts (each event replayed once), 5 unique event UUIDs. Stand-in source checked on registration.
 - Digitraffic live probe: 2 valid trains mapped; sample train 265, timestamp fallback receipt, 110.016 kph. Probe was fetch/map only, not POST ingestion. CC BY source terms read.
 - No real Kafka broker was run. Kafka mapping and commit-after-acceptance were tested using mock callbacks. No Cloudflare, production ingest, UI, or public demo end-to-end tests were run by this lane.
-- No upstream Vedant62 code was read, copied, or modified. No GitHub push performed.
+- Original code; no third-party source copied. No GitHub push performed.
 
 Paths delivered: tools/simulator, tools/kafka-bridge, worker/src/feeds only. Kafka-core producer/consumer experiment was removed after clarification to preserve direct-ingest implementation.
 

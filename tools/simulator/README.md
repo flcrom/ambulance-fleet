@@ -1,6 +1,6 @@
 # Fleet feed tools (Lane C)
 
-Original TypeScript implementation; no code copied from Vedant62 repositories. Origin of the project idea: Vedant62/geolocation-telemetry-backend at 0904030987584d1aa4193c9ba5f0ea6ea379e235. Those repositories were not read or modified in this lane.
+Original TypeScript implementation.
 
 ## Install and verify
 

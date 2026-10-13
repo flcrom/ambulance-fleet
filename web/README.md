@@ -1,6 +1,6 @@
 # Fleet dispatcher UI (lane B)
 
-Clean React + TypeScript implementation in `web/`. No upstream source was read or copied. Concept credit: Vedant62/geolocation-telemetry-backend, commit 0904030987584d1aa4193c9ba5f0ea6ea379e235 (origin supplied in project contract).
+Clean React + TypeScript implementation in `web/`. Original implementation.
 
 ## Run
 

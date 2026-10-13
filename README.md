@@ -1,55 +1,120 @@
-# Ambulance fleet tracking prototype
+# Siren
 
-## Built
-TypeScript Worker API, fleet-scoped SQLite Durable Object storage and React dispatcher UI. The implementation is **direct ingest**: authenticated ping -> validation -> immutable history/latest-state store -> fleet snapshot/WebSocket. Vehicle roles/scopes, replay deduplication, stale telemetry, advisory arrival geofence and straight-line ETA are implemented. Nullable speed/heading stay unknown; no estimated provider motion or patient/clinical data.
+A small live dispatch board for ambulance fleets. Vehicles post their position, the server keeps a fleet-scoped history, and a dispatcher sees them on a map in real time.
 
-Public demo has synthetic ambulances and separately labelled live MBTA **stand-in buses, not ambulances**. MBTA / MassDOT attribution links to https://www.mbta.com/developers/gtfs-realtime. Map tiles retain OpenStreetMap attribution and share viewer IP with the tile provider. Bus source/callsign survive ingestion; no fake emergency operational alerts for buses. Stand-in repeated observations update last_seen without rewriting immutable events. Feed failure remains visible, never replaced with synthetic live claims.
+**Live demo: https://siren.flcrom.dev**
 
-## Designed only
-Kafka-core architecture is a target design: producer-side ingestion -> broker/topic -> rules consumer -> storage -> dispatcher. The broker deployment, core producer path and core rules consumer are **not built or running** in this prototype. The optional tools/kafka-bridge reads an existing driver_locations topic and calls direct ingest, but it is not a deployed Kafka backbone. Its tests mock Kafka delivery; no actual broker end-to-end verification.
+This is a prototype. It is not an emergency-dispatch or medical product, it holds no patient data, and ETAs are straight-line estimates, not response-time predictions.
 
-Concept credit: https://github.com/Vedant62/geolocation-telemetry-backend at commit 0904030987584d1aa4193c9ba5f0ea6ea379e235. Clean implementation, no source copied (no license found in inspected upstream tree), no upstream repository changes.
+<p>
+  <img src="docs/screenshots/standin-desktop.png" alt="Siren dispatcher board showing live MBTA buses as stand-in vehicles" width="100%">
+</p>
 
-## Local run
-Node 22+, npm:
+<p>
+  <img src="docs/screenshots/standin-phone.png" alt="The same board at phone width" width="24%">
+  <img src="docs/screenshots/synthetic-desktop.png" alt="Synthetic ambulances in Bengaluru" width="72%">
+</p>
+
+## What you can do
+
+- **Public demo.** Open the site. By default it shows about a hundred real Boston buses, labelled as stand-in vehicles, not ambulances. Switch the dropdown to see three synthetic ambulances in Bengaluru. Public views are read-only.
+- **Dispatcher mode.** The key icon asks for a short-lived access token. Signed in, you see your own fleet, vehicle history and alerts.
+- **Send positions.** Crew devices, the simulator and the Kafka bridge post pings to one authenticated endpoint.
+
+<p>
+  <img src="docs/screenshots/dispatcher-desktop.png" alt="Dispatcher view with a signed-in fleet" width="100%">
+</p>
+
+## How it works
+
+A ping is a vehicle id, a position and a timestamp. It goes through one path:
+
+1. A crew, simulator or bridge client posts it to the Worker API with a signed token.
+2. The API checks the token, the role, the vehicle it is bound to, and the payload.
+3. The ping is written to the fleet's SQLite Durable Object. History is immutable. Repeated event ids are ignored.
+4. The Durable Object derives status, staleness and a straight-line ETA, then pushes a snapshot over WebSocket to every connected dispatcher.
+
+Speed and heading stay empty when the source does not report them. Nothing is guessed or filled in.
+
+## Built and designed
+
+<p>
+  <img src="docs/screenshots/architecture.png" alt="Architecture: built direct ingest next to the designed Kafka core" width="100%">
+</p>
+
+| | Status |
+|---|---|
+| Worker API, auth, validation | Built, deployed |
+| Fleet store (SQLite Durable Object) | Built, deployed |
+| Dispatcher UI (React, Leaflet) | Built, deployed |
+| Direct ingest: crew, simulator, MBTA feed | Built, deployed |
+| Kafka bridge (reads `driver_locations`, posts to the API) | Built, tested against a mock; no broker is deployed |
+| Kafka as the single entry point, producer side, rules consumer, dead-letter topic | Designed only, not built |
+
+Solid arrows in the diagram are what runs today. Dashed arrows are the target design.
+
+## Data sources and attribution
+
+The public demo uses real vehicle positions from the **MBTA** (Boston) as stand-ins. They are buses. They are not ambulances and the app says so wherever they appear.
+
+- Data provided by MassDOT / MBTA under the [MassDOT Developers License Agreement](https://www.mbta.com/developers/gtfs-realtime). No MBTA or MassDOT logos are used. MassDOT does not endorse this project and does not guarantee the data.
+- A Digitraffic (Finland) train feed adapter is included as a backup source. Digitraffic data is by Fintraffic / digitraffic.fi, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Map tiles and data: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
+
+## Run it locally
+
+Node 22 or newer.
 
 ```sh
 npm ci
 npm run build
-npm run typecheck:worker
 npm test
-npm --prefix web test
 npx wrangler dev --port 8787
 ```
 
-Open http://localhost:8787. Build output is web/dist and Worker ASSETS points there. Root npm test runs rules, auth and tool suites only; Playwright is separate:
+Open http://localhost:8787. The public demo works with no configuration.
 
-```sh
-cd web
-npx playwright install chromium
-npm run test:e2e
+For dispatcher mode, create `.dev.vars` (it is git-ignored) with:
+
+```
+LIVE_ENABLED=true
+JWT_SECRET=<at least 32 random bytes>
 ```
 
-Public default demo is synthetic. Select live stand-ins for MBTA buses. /api/demo/fleet?mode=stand_in and matching /api/demo/events are isolated from live fleets. Live API defaults disabled. Local-only `.dev.vars` must contain LIVE_ENABLED=true and an operator-generated JWT_SECRET of at least32 random bytes for real-device testing. Never commit .dev.vars, tokens or secrets. Mint short-lived tokens through operator-only auth.issueToken (not a public signup endpoint). Crew binds one vehicle; dispatcher administers the fleet; bridge can register stand-in sources only. Test scripts mint transient tokens when JWT_SECRET environment matches local runtime.
+Tokens are HS256 JWTs signed with that secret. They are minted by an operator, never by a public endpoint. Dispatcher tokens last at most one hour, crew tokens at most 15 minutes. See [`security/README.md`](security/README.md).
 
 ## Deploy
-Live at https://siren.flcrom.dev (custom domain in wrangler.jsonc; the older fleet.flcrom.dev redirects to it).
-
-Use the verified owner account and private source repo. Review account limits/billing before deployment. Authenticate Wrangler through the operator's authorized account route, then:
 
 ```sh
 npm ci
 npm run build
-npm test
-npm run typecheck:worker
 npx wrangler deploy
+npx wrangler secret put JWT_SECRET
 ```
 
-SQLite Durable Object migration v1 is in wrangler.jsonc. Deployment starts with LIVE_ENABLED=false and no live secret. If explicitly approved for live use, configure JWT_SECRET through the host's secret mechanism, provision fleet/roles, then enable live. Never expose real fleet data through public demo routes. Custom domain requires verified DNS ownership and a separate approved binding, not a guessed URL. Set noindex remains enabled via HTML/API headers.
+The Worker, its SQLite Durable Object and the static assets deploy together. `LIVE_ENABLED` is set in `wrangler.jsonc`. The live API stays closed until a `JWT_SECRET` exists. Custom domains are listed under `routes` in `wrangler.jsonc`. Pages are served with noindex and a strict content security policy.
 
-## Limits and verification
-This is a prototype, not an ambulance emergency-dispatch service. ETA is straight-line advisory, not road/traffic-aware or response-time prediction. No ambulance booking, clinical triage, emergency operational guarantee, regulatory-compliance certification or real ambulance rollout. Production work includes token issuance/revocation, onboarding, edge quotas, privacy/retention, backup/restore, monitoring, load tests and routing provider review.
+## Stack
 
-WebSocket expiry uses normal accept sockets plus active timers and pre-send checks; no hibernation while connections are active, a cost tradeoff. Per-principal in-memory limiters are pilot safeguards, not distributed edge protection. History pruning is activity-driven, not a deletion SLA.
+TypeScript, Cloudflare Workers, SQLite Durable Objects, React 19, Vite, Leaflet, Vitest, Playwright.
 
-Verification logs and details: README-LANE-A.md; web/VERIFICATION.md; security/README.md; tools/simulator/VERIFICATION.md. Independent QA-A and QA-B reported PASS, after fixes for auth expiry propagation, immutable feed events, stale alerts, unknown motion, snapshot rejection, phone labels and focus restoration. Local runtime verified100 actual MBTA bus observations, not real ambulance telemetry. Deployment/live UI verification is a separate step, not claimed by source-package delivery.
+## Tests and QA
+
+| Suite | Result |
+|---|---|
+| Rules and domain logic | 90 passing |
+| Auth and security | 23 passing |
+| Simulator and Kafka bridge | 26 passing |
+| Web unit tests | 18 passing |
+| Browser end-to-end (mock API) | 10 passing |
+| API, store and WebSocket regression | 63 of 63 passing, run independently |
+
+The deployed site was also checked in a real browser at desktop and phone width: map tiles load, no horizontal overflow, public views are read-only, and dispatcher sign-in works. Raw logs are in [`docs/qa`](docs/qa). The API contract is in [`docs/CONTRACT.md`](docs/CONTRACT.md).
+
+## Limits
+
+Per-principal rate limits are in-memory pilot safeguards, not edge protection. History pruning runs with activity and is not a deletion guarantee. Active WebSocket connections keep the Durable Object awake, which costs more than a hibernating design. Production use would need token issuance and revocation, onboarding, privacy and retention work, backups, monitoring, load tests and road-aware routing.
+
+## Licence
+
+No licence is attached. Until one is added, all rights are reserved.

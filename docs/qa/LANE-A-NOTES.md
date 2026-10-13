@@ -22,7 +22,7 @@ SQLite history retention: maintenance alarm prunes pings older than 7 days when 
 
 WebSocket auth expiry uses verified Claims.exp from D, active connection expiry timeout, 5s heartbeat checks and Durable Object alarm fallback. Local expiry verified. Active timer prevents hibernation while sockets remain, a cost tradeoff for this pilot; load testing pending. Public demo sockets have no claims. Tokens are never echoed as negotiated protocol and never placed in URL. Same-origin calls only; assets response includes noindex and a restrictive CSP. Add the map tile host to img-src if B uses a host other than *.tile.openstreetmap.org.
 
-Origin: inspired by Vedant62/geolocation-telemetry-backend at 0904030987584d1aa4193c9ba5f0ea6ea379e235, fetched from https://github.com/Vedant62/geolocation-telemetry-backend. Upstream source was NOT copied because no license file was present in the inspected tree. Clean TypeScript implementation.
+Original TypeScript implementation.
 
 WebSocket live clients offer [fleet.v1, fleet-token.<JWT>]; server negotiates fleet.v1 only. Demo may omit protocol. Per-principal DO buckets apply ping/read/write limits; public sockets capped 50/object. Edge unauthenticated rate limits remain deployment work.
 

@@ -1,6 +1,6 @@
 # Fleet v1 contract (merged 2026-10-13)
 
-Implementation: TypeScript, Vite/React dispatcher; Cloudflare Worker API + one SQLite Durable Object per fleet. A clean implementation inspired by Vedant62/geolocation-telemetry-backend at commit 0904030987584d1aa4193c9ba5f0ea6ea379e235. Upstream has no license in the fetched tree: do not copy its source. Kafka is an optional bridge, not a required demo dependency.
+Implementation: TypeScript, Vite/React dispatcher; Cloudflare Worker API + one SQLite Durable Object per fleet. Original implementation. Kafka is an optional bridge, not a required demo dependency.
 
 ## Layout and ownership
 - Lane A: worker/index.ts, worker/store.ts, shared/types.ts, wrangler.jsonc, package.json, tsconfig.json, API/storage tests
