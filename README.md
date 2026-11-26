@@ -1,6 +1,6 @@
 # Siren
 
-A small live dispatch board for ambulance fleets. Vehicles post their position, the server keeps a fleet-scoped history, and a dispatcher sees them on a map in real time.
+A live dispatch board for small ambulance fleets. Calls come in, a dispatcher assigns a unit, and units report their position while they run the call: en route, on scene, transporting, at hospital. The server keeps a fleet-scoped history and every dispatcher sees the same board in real time.
 
 **Live demo: https://siren.flcrom.dev**
 
@@ -17,8 +17,9 @@ This is a prototype. It is not an emergency-dispatch or medical product, it hold
 
 ## What you can do
 
-- **Public demo.** Open the site. By default it shows about a hundred real Boston buses, labelled as stand-in vehicles, not ambulances. Switch the dropdown to see three synthetic ambulances in Bengaluru. Public views are read-only.
-- **Dispatcher mode.** The key icon asks for a short-lived access token. Signed in, you see your own fleet, vehicle history and alerts.
+- **Public demo.** Open the site. A simulated Bengaluru fleet runs a continuous dispatch operation: calls appear at neighbourhood locations, the nearest available unit is dispatched and drives real road routes to the scene and on to a simulated hospital. Everything in it is simulated - invented stations and hospitals, generated calls - and the site says so. No real hospital, operator or emergency service participates, and it is not an emergency service. The dropdown also offers a feed of real Boston buses as labelled stand-in vehicles, not ambulances. Public views are read-only.
+- **Dispatcher mode.** The key icon asks for a short-lived access token. Signed in, you run your own fleet: create calls, assign units, advance unit status, see vehicle history and alerts.
+- **Crew mode.** /crew on a phone shares that device's GPS as one vehicle while sharing is on, using a crew token bound to that vehicle (minted by the operator, expires within 15 minutes). Nothing is sent until the crew member starts sharing.
 - **Send positions.** Crew devices, the simulator and the Kafka bridge post pings to one authenticated endpoint.
 
 <p>
@@ -36,6 +37,10 @@ A ping is a vehicle id, a position and a timestamp. It goes through one path:
 
 Speed and heading stay empty when the source does not report them. Nothing is guessed or filled in.
 
+## Road routing and ETA
+
+Demo units follow real road routes from the public OSRM demo server, fetched once per dispatch leg and cached in the fleet store; if routing is unavailable the simulation falls back to straight-line legs and the page says so. ETAs in the demo are road-based estimates; live-fleet ETAs are straight-line. Every ETA is approximate and never a response-time prediction. Routing data: [OSRM](https://project-osrm.org) and © OpenStreetMap contributors.
+
 ## Built and designed
 
 The architecture diagram is at https://archi1.flcrom.dev.
@@ -45,6 +50,9 @@ The architecture diagram is at https://archi1.flcrom.dev.
 | Worker API, auth, validation | Built, deployed |
 | Fleet store (SQLite Durable Object) | Built, deployed |
 | Dispatcher UI (React, Leaflet) | Built, deployed |
+| Calls: create, assign, status workflow | Built, deployed |
+| Crew page (phone GPS with crew token) | Built, deployed |
+| Demo dispatch simulation on road routes | Built, deployed |
 | Direct ingest: crew, simulator, MBTA feed | Built, deployed |
 | Kafka bridge (reads `driver_locations`, posts to the API) | Built, tested against a mock; no broker is deployed |
 | Kafka as the single entry point, producer side, rules consumer, dead-letter topic | Designed only, not built |
@@ -79,7 +87,7 @@ LIVE_ENABLED=true
 JWT_SECRET=<at least 32 random bytes>
 ```
 
-Tokens are HS256 JWTs signed with that secret. They are minted by an operator, never by a public endpoint. Dispatcher tokens last at most one hour, crew tokens at most 15 minutes. See [`security/README.md`](security/README.md).
+Tokens are HS256 JWTs signed with that secret. They are minted by an operator, never by a public endpoint. Dispatcher tokens last at most one hour, crew tokens at most 15 minutes. `tools/mint-token.mjs` mints them with `JWT_SECRET` in the environment. See [`security/README.md`](security/README.md).
 
 ## Deploy
 

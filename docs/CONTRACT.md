@@ -14,7 +14,7 @@ Implementation: TypeScript, Vite/React dispatcher; Cloudflare Worker API + one S
 All timestamps ISO 8601 UTC, lat/lon decimal degrees, speed_kph nonnegative km/h or null when unreported; heading degrees or null when unreported. Never coerce unreported motion to 0 or estimate motion. No patient data.
 
 Vehicle:
-`{id:string, callsign:string, type:'BLS'|'ALS', status:'available'|'en_route'|'at_scene'|'transporting'|'at_hospital'|'offline', destination: {label:string,lat:number,lon:number}|null, latest_ping:Ping|null, stale:boolean, eta: {minutes:number,method:'straight_line',approximate:true}|null}`
+`{id:string, callsign:string, type:'BLS'|'ALS', status:'available'|'en_route'|'at_scene'|'transporting'|'at_hospital'|'offline', destination: {label:string,lat:number,lon:number}|null, latest_ping:Ping|null, stale:boolean, eta: {minutes:number,method:'straight_line'|'road',approximate:true}|null, route?:{arrive_at:string}, incident_id?:string|null}`. `route` appears only on simulated demo units on a road-routed leg; ETA method `road` is derived from it. No route geometry is exposed in the API.
 
 Ping input:
 `{event_id:string, vehicle_id:string, recorded_at:string, lat:number, lon:number, speed_kph:number|null, heading:number|null}`
@@ -24,8 +24,11 @@ Alert:
 `{id:string, vehicle_id:string, kind:'stale'|'arrival', created_at:string, message:string, acknowledged_at:string|null}`
 Arrival is advisory geofence radius 150m, does NOT alter vehicle status. No clinical alerts. No route/path implies road routing.
 
+Incident:
+`{id:string(uuid), label:string, lat:number, lon:number, priority:1|2|3, status:'open'|'assigned'|'on_scene'|'transporting'|'closed', created_at:string, assigned_at:string|null, closed_at:string|null, vehicle_id:string|null, hospital_label:string|null}`. Demo incidents are simulated (generated calls, invented hospitals).
+
 Fleet snapshot:
-`{fleet_id:string, mode:'demo'|'live', server_time:string, vehicles:Vehicle[], alerts:Alert[]}`
+`{fleet_id:string, mode:'demo'|'live', server_time:string, vehicles:Vehicle[], alerts:Alert[], incidents?:Incident[]}` — incidents present on the synthetic demo and on live fleets; absent from the stand-in feed.
 
 ## Endpoints
 Same-origin. All responses Cache-Control:no-store; API errors `{error:{code:string,message:string}}`.
@@ -40,6 +43,10 @@ Same-origin. All responses Cache-Control:no-store; API errors `{error:{code:stri
 - POST /api/pings -> crew/bridge only, Ping input; 201 `{accepted:true,duplicate:false,event_id}` or 200 duplicate:true. Unknown vehicle 404. Crew vehicle binding enforced. Older/reordered valid events persist but never rewind map.
 - GET /api/vehicles/:id/history?limit=100 -> dispatcher only, `{pings:Ping[]}` newest recorded_at first; limit 1..500
 - POST /api/alerts/:id/ack -> dispatcher only, 200 `{acknowledged:true}`
+- POST /api/incidents -> dispatcher only, input `{label,lat,lon,priority}`; 201 Incident. Creates an open call.
+- POST /api/incidents/:id/assign -> dispatcher only, input `{vehicle_id}`; 200 Incident. Requires an available vehicle (or the currently assigned one); sets the unit en route with the call as destination. Reassignment releases the previous unit to available.
+- POST /api/incidents/:id/close -> dispatcher only, 200 Incident; idempotent. Closing clears the assigned unit's incident link without changing its status.
+- Unit status PATCH mirrors the linked call: at_scene -> on_scene, transporting -> transporting, at_hospital or available -> closed.
 
 Only live API enabled when LIVE_ENABLED='true' and JWT_SECRET configured. Auth failure 401, wrong role/vehicle 403. Demo is separate fleet `demo`; live auth cannot access `demo`.
 

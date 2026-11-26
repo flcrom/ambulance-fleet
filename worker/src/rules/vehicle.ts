@@ -21,6 +21,18 @@ export function isStale(p: Ping | null, nowMs: number = Date.now()): boolean {
   return !Number.isFinite(t) || nowMs - t > STALE_MS;
 }
 
+/**
+ * Road ETA from a planned route leg (demo simulation only; live fleets carry no plan).
+ * Advisory, approximate; not a response-time prediction. Whole minutes, rounded up.
+ */
+export function roadEta(v: Pick<Vehicle, 'route'>, nowMs: number = Date.now()): Eta | null {
+  const arrive = v.route ? parseIsoUtc(v.route.arrive_at) : NaN;
+  if (!Number.isFinite(arrive)) return null;
+  const minutes = Math.ceil((arrive - nowMs) / 60000);
+  if (!Number.isFinite(minutes) || minutes < 1) return null;
+  return { minutes, method: 'road', approximate: true };
+}
+
 /** Straight-line ETA only. Advisory, approximate; not a response-time prediction. Whole minutes, rounded up. */
 export function straightLineEta(v: Pick<Vehicle, 'destination' | 'latest_ping'>): Eta | null {
   const p = v.latest_ping, d = v.destination;
@@ -50,6 +62,6 @@ export function deriveVehicle(vehicle: Vehicle, nowMs: number = Date.now()): Veh
     ...vehicle,
     stale,
     status: stale ? 'offline' : vehicle.status,
-    eta: stale ? null : straightLineEta(vehicle),
+    eta: stale ? null : roadEta(vehicle, nowMs) ?? straightLineEta(vehicle),
   };
 }

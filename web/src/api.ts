@@ -11,5 +11,10 @@ export async function history(id:string,token:string,signal?:AbortSignal):Promis
  return data.pings.filter(p=>p.vehicle_id===id).sort((a,b)=>Date.parse(a.recorded_at)-Date.parse(b.recorded_at));
 }
 export const acknowledge=(id:string,token:string)=>api<{acknowledged:true}>(`/api/alerts/${encodeURIComponent(id)}/ack`,token,{method:'POST'});
+export const createIncident=(input:{label:string;lat:number;lon:number;priority:number},token:string)=>api<import('./types').Incident>('/api/incidents',token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+export const assignIncident=(id:string,vehicleId:string,token:string)=>api<import('./types').Incident>(`/api/incidents/${encodeURIComponent(id)}/assign`,token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vehicle_id:vehicleId})});
+export const closeIncident=(id:string,token:string)=>api<import('./types').Incident>(`/api/incidents/${encodeURIComponent(id)}/close`,token,{method:'POST'});
+export const patchVehicle=(id:string,patch:{status?:string;destination?:{label:string;lat:number;lon:number}|null},token:string)=>api<import('./types').Vehicle>(`/api/vehicles/${encodeURIComponent(id)}`,token,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+export const postPing=(ping:import('./types').PingInput,token:string)=>api<{accepted:boolean;duplicate:boolean;event_id:string}>('/api/pings',token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ping)});
 export const snapshotPath=(mode:Mode,standIn=false)=>mode==='demo'?`/api/demo/fleet${standIn?'?mode=stand_in':''}`:'/api/fleet';
 export const eventsPath=(mode:Mode,standIn=false)=>mode==='demo'?`/api/demo/events${standIn?'?mode=stand_in':''}`:'/api/events';

@@ -8,3 +8,52 @@ select{font:inherit;background:var(--paper);color:var(--ink);border:0;min-height
 .vehicle-tooltip{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px!important}.vehicle-middle>.eta{margin-left:auto}.leaflet-control-zoom a{color:var(--ink)!important;text-shadow:0 0 2px var(--paper),0 0 3px var(--paper)}.detail-data{flex-wrap:wrap}.detail-data>div{min-width:110px}
 
 @media(max-width:760px){.header-meta .mode{display:inline;font-size:12px}.header-meta{flex-wrap:wrap;justify-content:flex-end;gap:0;max-width:165px}.header-meta select{max-width:100px}.header-meta .mode{order:3;flex-basis:100%;text-align:right;padding-right:10px;line-height:16px}.header-meta button{min-height:40px}}
+
+/* Calls panel, incident workflow and crew page */
+.brand-sub{font-weight:400;color:var(--muted);font-size:14px}
+.workspace.with-calls{grid-template-columns:290px minmax(0,1fr) 315px}
+.calls-panel{border-right:1px solid var(--line);min-width:0;display:flex;flex-direction:column}
+.incident-list{overflow:auto;max-height:380px;flex:1}
+.incident-row{display:block;padding:14px 18px;border-bottom:1px solid var(--row-line);font-size:12px}
+.incident-row.closed{color:var(--muted)}
+.incident-top{display:flex;align-items:center;gap:8px}
+.incident-top strong{font-size:13px;font-weight:600;flex:1;overflow-wrap:anywhere}
+.priority{font-size:11px;border:1px solid var(--ink);padding:1px 6px;flex-shrink:0}
+.priority.p1{background:var(--ink);color:var(--paper)}
+.incident-middle{display:flex;gap:8px;margin-top:8px;align-items:baseline}
+.incident-status{font-weight:600;flex-shrink:0}
+.incident-line{color:var(--muted);overflow-wrap:anywhere}
+.incident-time{color:var(--muted);margin-top:6px}
+.incident-actions{display:flex;gap:8px;margin-top:10px;align-items:center}
+.incident-actions select{flex:1;min-height:40px}
+.incident-row>.text-button{margin-top:8px;padding-left:0}
+.call-form{display:flex;flex-direction:column;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.call-form input,.call-form select{width:100%;min-height:40px}
+.call-coords{display:flex;gap:8px}
+.call-form .primary{margin-top:4px}
+.map.picking{cursor:crosshair}
+.vehicle-task{margin-top:8px;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.status-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.status-actions .text-button[aria-pressed=true]{text-decoration:underline}
+.incident-tooltip{font-weight:600}
+.crew-card{max-width:460px;margin:40px auto;border:1px solid var(--line);padding:24px;display:flex;flex-direction:column;gap:8px}
+.crew-card h1{margin-bottom:8px}
+.crew-note{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+.crew-note svg{flex-shrink:0;margin-top:2px}
+.crew-card label{font-size:12px;color:var(--muted);margin-top:10px}
+.crew-card input{width:100%}
+.crew-card .primary{margin-top:18px}
+.crew-log{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+.crew-log p{display:flex;gap:10px;font-size:12px;margin:6px 0;color:var(--muted)}
+.crew-log p.crew-error{color:var(--ink);font-weight:600}
+.crew-log time{flex-shrink:0}
+@media(max-width:760px){
+ .workspace.with-calls{grid-template-columns:1fr}
+ .calls-panel{border-right:0;border-bottom:1px solid var(--line)}
+ .incident-list{max-height:280px}
+ .brand-sub{display:none}
+ .crew-card{margin:20px 0}
+}
+@media(min-width:761px) and (max-width:1100px){
+ .workspace.with-calls{grid-template-columns:250px minmax(0,1fr) 280px}
+}
