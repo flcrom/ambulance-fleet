@@ -1,7 +1,8 @@
 import {isPing, type Ping, type Mode} from './types';
 export class ApiError extends Error {constructor(public status:number,public code:string,message:string){super(message);}}
+export const COOKIE='cookie-session';
 export async function api<T>(path:string,token:string|null,init:RequestInit={}):Promise<T>{
- const response=await fetch(path,{...init,cache:'no-store',headers:{...(token?{Authorization:`Bearer ${token}`} :{}),...init.headers}});
+ const response=await fetch(path,{...init,cache:'no-store',headers:{...(token&&token!==COOKIE?{Authorization:`Bearer ${token}`} :{}),...init.headers}});
  if(!response.ok){const body=await response.json().catch(()=>null);throw new ApiError(response.status,body?.error?.code??'request_failed',body?.error?.message??`Request failed (${response.status})`);}
  return response.json();
 }
@@ -18,3 +19,7 @@ export const patchVehicle=(id:string,patch:{status?:string;destination?:{label:s
 export const postPing=(ping:import('./types').PingInput,token:string)=>api<{accepted:boolean;duplicate:boolean;event_id:string}>('/api/pings',token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ping)});
 export const snapshotPath=(mode:Mode,standIn=false)=>mode==='demo'?`/api/demo/fleet${standIn?'?mode=stand_in':''}`:'/api/fleet';
 export const eventsPath=(mode:Mode,standIn=false)=>mode==='demo'?`/api/demo/events${standIn?'?mode=stand_in':''}`:'/api/events';
+export const opsLogin=(fleet_id:string,password:string)=>api<{ok:true;fleet_id:string;role:string;exp:number}>('/api/ops/login',null,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fleet_id,password})});
+export const opsSetup=(fleet_id:string,key:string,password:string)=>api<{ok:true}>('/api/ops/setup',null,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fleet_id,key,password})});
+export const opsSession=()=>api<{ok:true;fleet_id:string;role:string;exp:number}>('/api/ops/session',null);
+export const opsLogout=()=>api<{ok:true}>('/api/ops/logout',null,{method:'POST'});

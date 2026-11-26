@@ -33,7 +33,15 @@ const readBody=req=>new Promise(resolve=>{let b='';req.on('data',c=>b+=c);req.on
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json');
  const url=new URL(req.url,'http://localhost');const mode=url.pathname.includes('/demo/')?'demo':'live';const standIn=url.searchParams.get('mode')==='stand_in';
- if(mode==='live'&&req.headers.authorization!=='Bearer mock.dispatcher.token'){res.writeHead(401);res.end(JSON.stringify({error:{code:'unauthorized',message:'Mock dispatcher token required'}}));return;}
+ const cookieAuth=(req.headers.cookie||'').includes('siren_ops=mock.dispatcher.token');
+ if(url.pathname==='/api/ops/login'&&req.method==='POST'){
+  const b=await readBody(req);
+  if(b?.fleet_id==='test-fleet'&&b?.password==='mock-password'){res.setHeader('Set-Cookie','siren_ops=mock.dispatcher.token; Path=/; HttpOnly; SameSite=Strict');res.end(JSON.stringify({ok:true,fleet_id:'test-fleet',role:'dispatcher',exp:Math.floor(Date.now()/1000)+3600}));return;}
+  res.writeHead(401);res.end(JSON.stringify({error:{code:'INVALID_LOGIN',message:'Invalid fleet or password'}}));return;
+ }
+ if(url.pathname==='/api/ops/session'){if(!cookieAuth){res.writeHead(401);res.end(JSON.stringify({error:{code:'UNAUTHORIZED',message:'Authentication required'}}));return;}res.end(JSON.stringify({ok:true,fleet_id:'test-fleet',role:'dispatcher',sub:'owner',exp:Math.floor(Date.now()/1000)+3600}));return;}
+ if(url.pathname==='/api/ops/logout'&&req.method==='POST'){res.setHeader('Set-Cookie','siren_ops=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict');res.end(JSON.stringify({ok:true}));return;}
+ if(mode==='live'&&req.headers.authorization!=='Bearer mock.dispatcher.token'&&!cookieAuth){res.writeHead(401);res.end(JSON.stringify({error:{code:'unauthorized',message:'Mock dispatcher token required'}}));return;}
  if(['/api/demo/fleet','/api/fleet'].includes(url.pathname)){res.end(JSON.stringify(snapshot(mode,standIn)));return;}
  if(req.method==='POST'&&url.pathname==='/api/alerts/stale-2/ack'){acknowledged.add('stale-2');res.end(JSON.stringify({acknowledged:true}));return;}
  if(req.method==='POST'&&url.pathname==='/api/incidents'){
@@ -75,5 +83,5 @@ const server=http.createServer(async(req,res)=>{
 });
 function fixture_ping(id){return [...demoVehicles(),...liveVehicles()].find(v=>v.id===id)?.latest_ping;}
 const wss=new WebSocketServer({noServer:true,handleProtocols:protocols=>protocols.has('fleet.v1')?'fleet.v1':false});
-server.on('upgrade',(req,socket,head)=>{const url=new URL(req.url,'http://localhost');const path=url.pathname;if(!['/api/demo/events','/api/events'].includes(path)||process.env.MOCK_NO_WS==='1'){socket.destroy();return;}const mode=path==='/api/demo/events'?'demo':'live';const standIn=url.searchParams.get('mode')==='stand_in';if(mode==='live'&&!req.headers['sec-websocket-protocol']?.split(',').map(x=>x.trim()).includes('fleet-token.mock.dispatcher.token')){socket.destroy();return;}wss.handleUpgrade(req,socket,head,ws=>{const send=()=>ws.send(JSON.stringify({type:'snapshot',data:snapshot(mode,standIn)}));send();const timer=setInterval(send,2500);ws.on('close',()=>clearInterval(timer));});});
+server.on('upgrade',(req,socket,head)=>{const url=new URL(req.url,'http://localhost');const path=url.pathname;if(!['/api/demo/events','/api/events'].includes(path)||process.env.MOCK_NO_WS==='1'){socket.destroy();return;}const mode=path==='/api/demo/events'?'demo':'live';const standIn=url.searchParams.get('mode')==='stand_in';const wsCookie=(req.headers.cookie||'').includes('siren_ops=mock.dispatcher.token');if(mode==='live'&&!wsCookie&&!req.headers['sec-websocket-protocol']?.split(',').map(x=>x.trim()).includes('fleet-token.mock.dispatcher.token')){socket.destroy();return;}wss.handleUpgrade(req,socket,head,ws=>{const send=()=>ws.send(JSON.stringify({type:'snapshot',data:snapshot(mode,standIn)}));send();const timer=setInterval(send,2500);ws.on('close',()=>clearInterval(timer));});});
 server.listen(8788,'127.0.0.1',()=>console.log('TEST ONLY mock API http://127.0.0.1:8788'));

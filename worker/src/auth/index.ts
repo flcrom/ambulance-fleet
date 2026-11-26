@@ -99,6 +99,11 @@ export function extractToken(request: Request): string {
     if (authorization || tokens.length !== 1 || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') throw authError();
     return tokens[0].slice('fleet-token.'.length);
   }
+  const cookieMatch = request.headers.get('Cookie')?.match(/(?:^|;\s*)__Host-siren_ops=([A-Za-z0-9_.-]+)(?:;|$)/);
+  if (cookieMatch) {
+    if (authorization) throw authError();
+    return cookieMatch[1];
+  }
   if (!authorization || !/^Bearer [A-Za-z0-9_.-]+$/i.test(authorization)) throw authError();
   return authorization.slice(7);
 }
@@ -126,6 +131,7 @@ export function assertSameOrigin(request: Request): void {
 }
 export * from './validation.js';
 export * from './rate-limit.js';
+export * from './password.js';
 /** Source claim alone is not trusted. Only provisioning assigns bridge service identity. */
 export function requireRegistrationAccess(claims: Claims, source: 'device' | 'synthetic' | 'stand_in'): void {
   if (claims.role === 'dispatcher' || (claims.role === 'bridge' && source === 'stand_in')) return;

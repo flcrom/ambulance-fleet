@@ -19,8 +19,9 @@ test('demo shows simulated calls feed with priorities and read-only rows',async(
 test('dispatcher runs a call end to end: create, assign, advance status, close',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Dispatcher sign in'}).click();
- await page.getByLabel('Short-lived access token').fill('mock.dispatcher.token');
- await page.getByRole('button',{name:'Connect',exact:true}).click();
+ await page.getByLabel('Fleet ID').fill('test-fleet');
+ await page.getByLabel('Password',{exact:true}).fill('mock-password');
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
  await expect(page.locator('.calls-panel h2')).toHaveText('Calls');
  await page.getByRole('button',{name:'New call',exact:true}).click();
  await page.getByLabel('Call label').fill('Test call Indiranagar');

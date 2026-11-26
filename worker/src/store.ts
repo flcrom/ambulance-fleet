@@ -1,6 +1,6 @@
 import { fetchFeed,fetchBusRoutes,ATTRIBUTIONS } from './feeds/index';
 import { DurableObject } from 'cloudflare:workers';
-import { ApiError, apiErrorResponse, RateLimiter, principalRateKey, requireRegistrationAccess, validateVehicleRegistration, validateVehiclePatch, rejectUnknownKeys, readJson } from './auth/index';
+import { ApiError, apiErrorResponse, RateLimiter, principalRateKey, requireRegistrationAccess, validateVehicleRegistration, validateVehiclePatch, rejectUnknownKeys, readJson, hashPassword, verifyPassword } from './auth/index';
 import type { Claims } from './auth/index';
 import { validatePing, deriveVehicle, evaluateAlerts, isNewer } from './rules/index';
 import type { Vehicle, Ping, PingInput, Alert, FleetSnapshot, Destination, OperationalStatus, Incident } from '../../shared/types';
@@ -24,6 +24,7 @@ export class FleetStore extends DurableObject<Env> {
  private sql: SqlStorage; private feedError:string|undefined; private busRoutes:Set<string>|undefined; private feedLastAttempt=0;
  private routeErrorAt=0;
  private pingLimiter=new RateLimiter(60,1); private readLimiter=new RateLimiter(100,2); private writeLimiter=new RateLimiter(30,.5);
+ private loginLimiter=new RateLimiter(10,.05);
  constructor(ctx: DurableObjectState, env: Env) {
   super(ctx,env); this.sql=ctx.storage.sql;
   this.sql.exec(`CREATE TABLE IF NOT EXISTS vehicles(id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS pings(event_id TEXT PRIMARY KEY, vehicle_id TEXT NOT NULL, recorded_at TEXT NOT NULL, data TEXT NOT NULL); CREATE INDEX IF NOT EXISTS ping_history ON pings(vehicle_id,recorded_at DESC); CREATE TABLE IF NOT EXISTS alerts(id TEXT PRIMARY KEY, vehicle_id TEXT NOT NULL, kind TEXT NOT NULL, active INTEGER NOT NULL, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS incidents(id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS routes(key TEXT PRIMARY KEY, data TEXT NOT NULL);`);
@@ -128,12 +129,37 @@ export class FleetStore extends DurableObject<Env> {
  private async broadcast(fleetId:string){const body=JSON.stringify({type:'snapshot',data:await this.snapshot(fleetId)});for(const ws of Array.from(this.sockets)){try{const attachment=this.attachments.get(ws) as {expiresAt?:number|null};if(attachment.expiresAt!=null&&attachment.expiresAt*1000<=Date.now()){this.expireSocket(ws);continue;}ws.send(body);}catch{ws.close(1011,'Stream unavailable');}}}
  private role(claims:Claims,allowed:string[]){if(!allowed.includes(claims.role))throw new ApiError(403,'ROLE','Role is not allowed');}
  private async body(request:Request){return await readJson(request,4096) as Record<string,unknown>;}
+ /** Owner ops actions: one-time password setup and rate-limited, temporarily-locking password verification. Never reveals whether a fleet exists. */
+ private async handleOpsAction(action:string,request:Request):Promise<Response>{
+  const payload=await this.body(request) as {password?:unknown};
+  if(typeof payload.password!=='string')throw new ApiError(400,'PASSWORD','Password required');
+  const now=Date.now();
+  if(action==='setup'){
+   if(this.metaGet('owner_hash'))throw new ApiError(404,'NOT_FOUND','Unknown endpoint');
+   this.metaSet('owner_hash',await hashPassword(payload.password));
+   return json({ok:true});
+  }
+  if(action!=='login')throw new ApiError(404,'NOT_FOUND','Unknown endpoint');
+  this.loginLimiter.enforce('owner-login');
+  const lockedUntil=Number(this.metaGet('owner_locked_until')||'0');
+  if(lockedUntil>now)throw new ApiError(429,'RATE_LIMITED','Too many attempts',Math.ceil((lockedUntil-now)/1000));
+  if(!await verifyPassword(payload.password,this.metaGet('owner_hash'))){
+   const fails=Number(this.metaGet('owner_fails')||'0')+1;
+   if(fails>=5){this.metaSet('owner_locked_until',String(now+900000));this.metaSet('owner_fails','0');}else this.metaSet('owner_fails',String(fails));
+   throw new ApiError(401,'INVALID_LOGIN','Invalid fleet or password');
+  }
+  this.metaSet('owner_fails','0');
+  return json({ok:true});
+ }
  private saveIncident(incident:Incident){this.sql.exec('INSERT OR REPLACE INTO incidents(id,data) VALUES (?,?)',incident.id,JSON.stringify(incident));}
  async fetch(request:Request):Promise<Response>{
   const url=new URL(request.url);const fleetId=request.headers.get('x-fleet-id')!;
   try{
    if(!validId(fleetId))throw new ApiError(403,'FLEET','Invalid fleet');
-   const demo=fleetId==='demo'||fleetId==='demo-standin';const claims:Claims=demo?{sub:'demo',fleet_id:fleetId,role:'dispatcher',exp:0}:JSON.parse(request.headers.get('x-fleet-context')||'null');
+   const demo=fleetId==='demo'||fleetId==='demo-standin';
+   const opsAction=request.headers.get('x-ops-action');
+   if(opsAction){if(demo)throw new ApiError(403,'FLEET','Invalid fleet');return await this.handleOpsAction(opsAction,request);}
+   const claims:Claims=demo?{sub:'demo',fleet_id:fleetId,role:'dispatcher',exp:0}:JSON.parse(request.headers.get('x-fleet-context')||'null');
    if(!claims || claims.fleet_id!==fleetId)throw new ApiError(403,'FLEET','Fleet mismatch');
    this.metaSet('fleet_id',fleetId);
    if(!demo){const action=url.pathname==='/api/pings'?'ping':request.method==='GET'?'read':'write';const limiter=action==='ping'?this.pingLimiter:action==='read'?this.readLimiter:this.writeLimiter;limiter.enforce(principalRateKey(claims,action));}

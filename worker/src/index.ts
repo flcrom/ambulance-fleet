@@ -1,7 +1,53 @@
-import { authorize, ApiError, assertSameOrigin, apiErrorResponse } from './auth/index';
+import { authorize, issueToken, ApiError, assertSameOrigin, apiErrorResponse } from './auth/index';
 import type { AuthEnv } from './auth/index';
 export { FleetStore } from './store';
-export interface Env extends AuthEnv { FLEETS: DurableObjectNamespace; ASSETS: Fetcher }
+export interface Env extends AuthEnv { FLEETS: DurableObjectNamespace; ASSETS: Fetcher; PROVISION_KEY?: string }
+const OPS_COOKIE = '__Host-siren_ops';
+const encoder = new TextEncoder();
+async function secretEquals(a: string, b: string): Promise<boolean> {
+ const [ha, hb] = await Promise.all([crypto.subtle.digest('SHA-256', encoder.encode(a)), crypto.subtle.digest('SHA-256', encoder.encode(b))]);
+ const x = new Uint8Array(ha), y = new Uint8Array(hb); let diff = 0;
+ for (let i = 0; i < 32; i++) diff |= x[i] ^ y[i];
+ return diff === 0;
+}
+function opsCookieHeaders(token: string | null, ttl: number): Headers {
+ const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
+ headers.set('Set-Cookie', token === null
+  ? `${OPS_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`
+  : `${OPS_COOKIE}=${token}; Path=/; Max-Age=${ttl}; HttpOnly; Secure; SameSite=Strict`);
+ return headers;
+}
+/** Owner ops endpoints: one-time fleet password setup, password login issuing an HttpOnly session cookie, logout and session inspection. */
+async function handleOps(pathname: string, request: Request, env: Env): Promise<Response> {
+ if (env.LIVE_ENABLED !== 'true') throw new ApiError(503, 'LIVE_DISABLED', 'Live API unavailable');
+ if (pathname === '/api/ops/logout') return new Response(JSON.stringify({ ok: true }), { status: 200, headers: opsCookieHeaders(null, 0) });
+ if (pathname === '/api/ops/session') {
+  const claims = await authorize(request, env);
+  return new Response(JSON.stringify({ ok: true, fleet_id: claims.fleet_id, role: claims.role, sub: claims.sub, exp: claims.exp }), { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
+ }
+ const length = Number(request.headers.get('content-length') ?? '0');
+ if (!Number.isSafeInteger(length) || length < 1 || length > 2048) throw new ApiError(413, 'BODY_SIZE', 'Body too large');
+ let payload: unknown;
+ try { payload = JSON.parse(await request.text()); } catch { throw new ApiError(400, 'INVALID_JSON', 'Body must be JSON'); }
+ if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new ApiError(400, 'INVALID_JSON', 'Body must be a JSON object');
+ const { fleet_id, password, key } = payload as Record<string, unknown>;
+ if (typeof fleet_id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(fleet_id) || fleet_id.startsWith('demo')) throw new ApiError(400, 'FLEET', 'Invalid fleet');
+ if (typeof password !== 'string' || !password) throw new ApiError(400, 'PASSWORD', 'Password required');
+ const action = pathname === '/api/ops/setup' ? 'setup' : 'login';
+ if (action === 'setup' && (!env.PROVISION_KEY || typeof key !== 'string' || !(await secretEquals(key, env.PROVISION_KEY)))) throw new ApiError(404, 'NOT_FOUND', 'Unknown endpoint');
+ const forwardHeaders = new Headers({ 'Content-Type': 'application/json', 'x-fleet-id': fleet_id, 'x-ops-action': action });
+ const forwarded = new Request(request.url, { method: 'POST', headers: forwardHeaders, body: JSON.stringify({ password }) });
+ const response = await env.FLEETS.get(env.FLEETS.idFromName(fleet_id)).fetch(forwarded);
+ if (action === 'setup' || !response.ok) {
+  const output = new Headers(response.headers); output.set('Cache-Control', 'no-store'); output.set('X-Robots-Tag', 'noindex, nofollow');
+  return new Response(response.body, { status: response.status, headers: output });
+ }
+ const secret = env.JWT_SECRET;
+ if (!secret || encoder.encode(secret).byteLength < 32) throw new ApiError(503, 'AUTH_NOT_CONFIGURED', 'Live API unavailable');
+ const ttl = 3600;
+ const token = await issueToken({ sub: 'owner', fleet_id, role: 'dispatcher' }, secret, { ttlSeconds: ttl });
+ return new Response(JSON.stringify({ ok: true, fleet_id, role: 'dispatcher', exp: Math.floor(Date.now() / 1000) + ttl }), { status: 200, headers: opsCookieHeaders(token, ttl) });
+}
 export function json(data: unknown, status = 200) { return new Response(JSON.stringify(data), { status, headers: {'Content-Type':'application/json', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', 'X-Robots-Tag':'noindex, nofollow'} }); }
 export default {
  async fetch(request: Request, env: Env): Promise<Response> {
@@ -19,6 +65,11 @@ export default {
    const demo = url.pathname === '/api/demo/fleet' || url.pathname === '/api/demo/events';
    if (demo && request.method !== 'GET') throw new ApiError(405,'METHOD','Read-only demo');
    if(url.pathname.startsWith('/api/demo/') && !demo) throw new ApiError(404,'NOT_FOUND','Unknown endpoint');
+   if (url.pathname.startsWith('/api/ops/') && url.pathname !== '/api/ops/action') {
+    if (request.method !== 'POST' && url.pathname !== '/api/ops/session') throw new ApiError(405, 'METHOD', 'Method not allowed');
+    if (!['/api/ops/login', '/api/ops/setup', '/api/ops/logout', '/api/ops/session'].includes(url.pathname)) throw new ApiError(404, 'NOT_FOUND', 'Unknown endpoint');
+    return await handleOps(url.pathname, request, env);
+   }
    const headers = new Headers(request.headers); headers.delete('x-fleet-context');
    let fleetId = demo && url.searchParams.get('mode')==='stand_in' ? 'demo-standin' : 'demo';
    if(!demo) {
