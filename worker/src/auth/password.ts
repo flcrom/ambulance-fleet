@@ -11,6 +11,12 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
 export const PASSWORD_ITERATIONS = 25000;
 export const PASSWORD_MIN_CHARS = 16;
 export const PASSWORD_MAX_BYTES = 128;
+/**
+ * Valid-format record with a fixed salt and an all-zero derived key. Login
+ * verifies against this when a fleet has no owner password yet (or the fleet
+ * does not exist), so the failed-login timing does not reveal which case it is.
+ */
+export const DUMMY_RECORD = 'v1$25000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 function b64(bytes: Uint8Array): string {
   let str = ''; for (const b of bytes) str += String.fromCharCode(b);

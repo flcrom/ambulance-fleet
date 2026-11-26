@@ -41,6 +41,8 @@ const server=http.createServer(async(req,res)=>{
  }
  if(url.pathname==='/api/ops/session'){if(!cookieAuth){res.writeHead(401);res.end(JSON.stringify({error:{code:'UNAUTHORIZED',message:'Authentication required'}}));return;}res.end(JSON.stringify({ok:true,fleet_id:'test-fleet',role:'dispatcher',sub:'owner',exp:Math.floor(Date.now()/1000)+3600}));return;}
  if(url.pathname==='/api/ops/logout'&&req.method==='POST'){res.setHeader('Set-Cookie','siren_ops=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict');res.end(JSON.stringify({ok:true}));return;}
+ const crewMint=url.pathname.match(/^\/api\/vehicles\/([A-Za-z0-9_-]+)\/crew-token$/);
+ if(crewMint&&req.method==='POST'){if(!cookieAuth){res.writeHead(401);res.end(JSON.stringify({error:{code:'UNAUTHORIZED',message:'Authentication required'}}));return;}res.end(JSON.stringify({ok:true,token:'mock.crew.token',vehicle_id:crewMint[1],exp:Math.floor(Date.now()/1000)+900}));return;}
  if(mode==='live'&&req.headers.authorization!=='Bearer mock.dispatcher.token'&&!cookieAuth){res.writeHead(401);res.end(JSON.stringify({error:{code:'unauthorized',message:'Mock dispatcher token required'}}));return;}
  if(['/api/demo/fleet','/api/fleet'].includes(url.pathname)){res.end(JSON.stringify(snapshot(mode,standIn)));return;}
  if(req.method==='POST'&&url.pathname==='/api/alerts/stale-2/ack'){acknowledged.add('stale-2');res.end(JSON.stringify({acknowledged:true}));return;}
@@ -54,7 +56,7 @@ const server=http.createServer(async(req,res)=>{
  if(req.method==='POST'&&inc){
   const incident=live.incidents.find(i=>i.id===inc[1]);
   if(!incident){res.writeHead(404);res.end(JSON.stringify({error:{code:'INCIDENT',message:'Incident not found'}}));return;}
-  if(inc[2]==='close'){if(incident.status!=='closed'){incident.status='closed';incident.closed_at=now0();const unit=liveVehicles().find(v=>v.id===incident.vehicle_id);if(unit)unit.incident_id=null;}res.end(JSON.stringify(incident));return;}
+  if(inc[2]==='close'){if(incident.status!=='closed'){incident.status='closed';incident.closed_at=now0();const unit=liveVehicles().find(v=>v.id===incident.vehicle_id);if(unit){unit.incident_id=null;unit.status='available';unit.destination=null;}}res.end(JSON.stringify(incident));return;}
   const b=await readBody(req);const unit=liveVehicles().find(v=>v.id===b?.vehicle_id);
   if(!unit){res.writeHead(404);res.end(JSON.stringify({error:{code:'VEHICLE',message:'Vehicle not found'}}));return;}
   if(unit.status!=='available'){res.writeHead(409);res.end(JSON.stringify({error:{code:'BUSY',message:'Vehicle is not available'}}));return;}

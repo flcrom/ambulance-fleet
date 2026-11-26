@@ -16,6 +16,7 @@ export const createIncident=(input:{label:string;lat:number;lon:number;priority:
 export const assignIncident=(id:string,vehicleId:string,token:string)=>api<import('./types').Incident>(`/api/incidents/${encodeURIComponent(id)}/assign`,token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({vehicle_id:vehicleId})});
 export const closeIncident=(id:string,token:string)=>api<import('./types').Incident>(`/api/incidents/${encodeURIComponent(id)}/close`,token,{method:'POST'});
 export const patchVehicle=(id:string,patch:{status?:string;destination?:{label:string;lat:number;lon:number}|null},token:string)=>api<import('./types').Vehicle>(`/api/vehicles/${encodeURIComponent(id)}`,token,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+export const mintCrewToken=(vehicleId:string,token:string)=>api<{ok:true;token:string;vehicle_id:string;exp:number}>(`/api/vehicles/${encodeURIComponent(vehicleId)}/crew-token`,token,{method:'POST'});
 export const postPing=(ping:import('./types').PingInput,token:string)=>api<{accepted:boolean;duplicate:boolean;event_id:string}>('/api/pings',token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ping)});
 export const snapshotPath=(mode:Mode,standIn=false)=>mode==='demo'?`/api/demo/fleet${standIn?'?mode=stand_in':''}`:'/api/fleet';
 export const eventsPath=(mode:Mode,standIn=false)=>mode==='demo'?`/api/demo/events${standIn?'?mode=stand_in':''}`:'/api/events';

@@ -1,4 +1,4 @@
-import { authorize, issueToken, ApiError, assertSameOrigin, apiErrorResponse } from './auth/index';
+import { authorize, issueToken, requireRole, ApiError, assertSameOrigin, apiErrorResponse } from './auth/index';
 import type { AuthEnv } from './auth/index';
 export { FleetStore } from './store';
 export interface Env extends AuthEnv { FLEETS: DurableObjectNamespace; ASSETS: Fetcher; PROVISION_KEY?: string }
@@ -20,7 +20,17 @@ function opsCookieHeaders(token: string | null, ttl: number): Headers {
 /** Owner ops endpoints: one-time fleet password setup, password login issuing an HttpOnly session cookie, logout and session inspection. */
 async function handleOps(pathname: string, request: Request, env: Env): Promise<Response> {
  if (env.LIVE_ENABLED !== 'true') throw new ApiError(503, 'LIVE_DISABLED', 'Live API unavailable');
- if (pathname === '/api/ops/logout') return new Response(JSON.stringify({ ok: true }), { status: 200, headers: opsCookieHeaders(null, 0) });
+ if (pathname === '/api/ops/logout') {
+  // Revoke every live stream for this fleet at its Durable Object before
+  // clearing the cookie; otherwise sockets upgraded before logout would keep
+  // streaming until token expiry. Without a session, just clear the cookie.
+  try {
+   const claims = await authorize(request, env);
+   const revoked = await env.FLEETS.get(env.FLEETS.idFromName(claims.fleet_id)).fetch(new Request(request.url, { method: 'POST', headers: new Headers({ 'Content-Type': 'application/json', 'x-fleet-id': claims.fleet_id, 'x-ops-action': 'logout' }), body: '{}' }));
+   if (!revoked.ok) throw new ApiError(502, 'LOGOUT_FAILED', 'Sign-out could not revoke live streams');
+  } catch (error) { if (error instanceof ApiError && error.status === 401) { /* no session: cookie clear below is enough */ } else throw error; }
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: opsCookieHeaders(null, 0) });
+ }
  if (pathname === '/api/ops/session') {
   const claims = await authorize(request, env);
   return new Response(JSON.stringify({ ok: true, fleet_id: claims.fleet_id, role: claims.role, sub: claims.sub, exp: claims.exp }), { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
@@ -69,6 +79,18 @@ export default {
     if (request.method !== 'POST' && url.pathname !== '/api/ops/session') throw new ApiError(405, 'METHOD', 'Method not allowed');
     if (!['/api/ops/login', '/api/ops/setup', '/api/ops/logout', '/api/ops/session'].includes(url.pathname)) throw new ApiError(404, 'NOT_FOUND', 'Unknown endpoint');
     return await handleOps(url.pathname, request, env);
+   }
+   const crewMatch = url.pathname.match(/^\/api\/vehicles\/([a-zA-Z0-9_-]{1,80})\/crew-token$/);
+   if (crewMatch) {
+    if (request.method !== 'POST') throw new ApiError(405, 'METHOD', 'Method not allowed');
+    const claims = await authorize(request, env);
+    requireRole(claims, 'dispatcher');
+    const vehicle_id = crewMatch[1];
+    const secret = env.JWT_SECRET;
+    if (!secret || encoder.encode(secret).byteLength < 32) throw new ApiError(503, 'AUTH_NOT_CONFIGURED', 'Live API unavailable');
+    const ttl = 900; // crew tokens are deliberately short-lived; the app re-mints on demand
+    const token = await issueToken({ sub: `crew:${vehicle_id}`, fleet_id: claims.fleet_id, role: 'crew', vehicle_id }, secret, { ttlSeconds: ttl });
+    return json({ ok: true, token, vehicle_id, exp: Math.floor(Date.now() / 1000) + ttl });
    }
    const headers = new Headers(request.headers); headers.delete('x-fleet-context');
    let fleetId = demo && url.searchParams.get('mode')==='stand_in' ? 'demo-standin' : 'demo';

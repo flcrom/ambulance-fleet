@@ -1,6 +1,6 @@
 import { fetchFeed,fetchBusRoutes,ATTRIBUTIONS } from './feeds/index';
 import { DurableObject } from 'cloudflare:workers';
-import { ApiError, apiErrorResponse, RateLimiter, principalRateKey, requireRegistrationAccess, validateVehicleRegistration, validateVehiclePatch, rejectUnknownKeys, readJson, hashPassword, verifyPassword } from './auth/index';
+import { ApiError, apiErrorResponse, RateLimiter, principalRateKey, requireRegistrationAccess, validateVehicleRegistration, validateVehiclePatch, rejectUnknownKeys, readJson, hashPassword, verifyPassword, DUMMY_RECORD } from './auth/index';
 import type { Claims } from './auth/index';
 import { validatePing, deriveVehicle, evaluateAlerts, isNewer } from './rules/index';
 import type { Vehicle, Ping, PingInput, Alert, FleetSnapshot, Destination, OperationalStatus, Incident } from '../../shared/types';
@@ -131,6 +131,13 @@ export class FleetStore extends DurableObject<Env> {
  private async body(request:Request){return await readJson(request,4096) as Record<string,unknown>;}
  /** Owner ops actions: one-time password setup and rate-limited, temporarily-locking password verification. Never reveals whether a fleet exists. */
  private async handleOpsAction(action:string,request:Request):Promise<Response>{
+  if(action==='logout'){
+   // Sign-out revokes every live stream for this fleet immediately; without this
+   // a socket upgraded before logout would keep streaming until token expiry.
+   this.metaSet('ws_revoked_before',String(Date.now()));
+   for(const ws of Array.from(this.sockets))this.expireSocket(ws);
+   return json({ok:true});
+  }
   const payload=await this.body(request) as {password?:unknown};
   if(typeof payload.password!=='string')throw new ApiError(400,'PASSWORD','Password required');
   const now=Date.now();
@@ -143,7 +150,7 @@ export class FleetStore extends DurableObject<Env> {
   this.loginLimiter.enforce('owner-login');
   const lockedUntil=Number(this.metaGet('owner_locked_until')||'0');
   if(lockedUntil>now)throw new ApiError(429,'RATE_LIMITED','Too many attempts',Math.ceil((lockedUntil-now)/1000));
-  if(!await verifyPassword(payload.password,this.metaGet('owner_hash'))){
+  if(!await verifyPassword(payload.password,this.metaGet('owner_hash')??DUMMY_RECORD)){
    const fails=Number(this.metaGet('owner_fails')||'0')+1;
    if(fails>=5){this.metaSet('owner_locked_until',String(now+900000));this.metaSet('owner_fails','0');}else this.metaSet('owner_fails',String(fails));
    throw new ApiError(401,'INVALID_LOGIN','Invalid fleet or password');
@@ -210,7 +217,7 @@ export class FleetStore extends DurableObject<Env> {
      if(incident.status!=='closed'){
       incident.status='closed';incident.closed_at=new Date().toISOString();
       const unit=incident.vehicle_id?this.getVehicle(incident.vehicle_id):undefined;
-      if(unit&&unit.incident_id===incident.id){unit.incident_id=null;this.saveVehicle(unit);}
+      if(unit&&unit.incident_id===incident.id){unit.incident_id=null;unit.status='available';unit.destination=null;this.saveVehicle(unit);}
       this.saveIncident(incident);await this.broadcast(fleetId);
      }
      return json(incident);

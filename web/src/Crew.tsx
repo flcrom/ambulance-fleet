@@ -11,11 +11,21 @@ const INTERVAL_MS=10_000;
  * vehicle of its fleet while sharing is explicitly on. The token and positions
  * stay in page memory; nothing is sent before "Start sharing" and the browser
  * asks for location permission first. Crew tokens are minted by the fleet
- * operator, bound to one vehicle, and expire within 15 minutes.
+ * operator from the signed-in vehicle panel, bound to one vehicle, and expire
+ * within 15 minutes.
  */
 export default function Crew(){
  const [token,setToken]=useState(''),[vehicleId,setVehicleId]=useState(''),[sharing,setSharing]=useState(false),[log,setLog]=useState<LogLine[]>([]),[sent,setSent]=useState(0);
  const watchRef=useRef<number|null>(null),timerRef=useRef<ReturnType<typeof setInterval>|null>(null),positionRef=useRef<GeolocationPosition|null>(null);
+ useEffect(()=>{
+  // Dispatcher-issued crew links carry the token in the fragment
+  // (/crew#token=...&vehicle=...), so it never reaches the server or logs.
+  const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+  const linkedToken=hash.get('token'),linkedVehicle=hash.get('vehicle');
+  if(linkedToken)setToken(linkedToken);
+  if(linkedVehicle)setVehicleId(linkedVehicle);
+  if(linkedToken||linkedVehicle)history.replaceState(null,'',location.pathname);
+ },[]);
  const say=(text:string,error=false)=>setLog(previous=>[{at:new Date().toLocaleTimeString(),text,error},...previous].slice(0,6));
  const stop=(note?:string)=>{
   if(watchRef.current!==null){navigator.geolocation.clearWatch(watchRef.current);watchRef.current=null;}

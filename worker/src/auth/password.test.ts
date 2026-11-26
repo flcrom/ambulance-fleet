@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashPassword, verifyPassword, passwordAcceptable, PASSWORD_ITERATIONS } from './password';
+import { hashPassword, verifyPassword, passwordAcceptable, PASSWORD_ITERATIONS, DUMMY_RECORD } from './password';
 import { extractToken } from './index';
 
 const GOOD = 'aB3$xY9mQ2vL8pR4nK6wT1zS'; // 24-char generated-style secret
@@ -62,5 +62,19 @@ describe('ops session cookie extraction', () => {
   });
   it('throws without any credential', () => {
     expect(() => extractToken(new Request('https://siren.flcrom.dev/api/fleet'))).toThrow();
+  });
+});
+
+describe('dummy record', () => {
+  it('runs the full PBKDF2 path and never verifies', async () => {
+    const started = Date.now();
+    await expect(verifyPassword('wrong-password-1234', DUMMY_RECORD)).resolves.toBe(false);
+    const dummyMs = Date.now() - started;
+    const record = await hashPassword('correct-horse-battery');
+    const t2 = Date.now();
+    await expect(verifyPassword('wrong-password-1234', record)).resolves.toBe(false);
+    const realMs = Date.now() - t2;
+    // Same code path: the no-record case must not short-circuit before PBKDF2.
+    expect(dummyMs).toBeGreaterThan(realMs / 4);
   });
 });
