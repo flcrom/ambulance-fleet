@@ -12,8 +12,11 @@ const OSRM_BASE = 'https://router.project-osrm.org/route/v1/driving/';
 export async function fetchOsrmRoute(from: LatLon, to: LatLon, fetcher: typeof fetch = fetch): Promise<RouteResult | null> {
   try {
     const url = `${OSRM_BASE}${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson&steps=false`;
-    const response = await fetcher(url, { signal: AbortSignal.timeout(8000) });
-    if (!response.ok) return null;
+    const response = await fetcher(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'SirenDispatchDemo/1.0 (https://github.com/flcrom/ambulance-fleet; contact via repo)' },
+    });
+    if (!response.ok) { console.error(`OSRM route request failed: HTTP ${response.status}`); return null; }
     const body = await response.json() as { code?: string; routes?: { distance?: number; geometry?: { coordinates?: [number, number][] } }[] };
     const route = body.routes?.[0];
     const coords = route?.geometry?.coordinates;
@@ -24,7 +27,8 @@ export async function fetchOsrmRoute(from: LatLon, to: LatLon, fetcher: typeof f
       points.push({ lat: c[1], lon: c[0] });
     }
     return { points, total_m: route.distance };
-  } catch {
+  } catch (err) {
+    console.error(`OSRM route request failed: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }
